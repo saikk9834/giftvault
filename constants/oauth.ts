@@ -1,5 +1,6 @@
 import * as Linking from "expo-linking";
 import * as ReactNative from "react-native";
+import * as WebBrowser from "expo-web-browser";
 
 // Extract scheme from bundle ID (last segment timestamp, prefixed with "manus")
 // e.g., "space.manus.my.app.t20240115103045" -> "manus20240115103045"
@@ -94,12 +95,12 @@ export const getLoginUrl = () => {
 /**
  * Start OAuth login flow.
  *
- * On native platforms (iOS/Android), open the system browser directly so
- * the OAuth callback returns via deep link to the app.
+ * On native platforms (iOS/Android), uses WebBrowser.openAuthSessionAsync so the
+ * OAuth portal can redirect back to the app via the registered manus:// deep link scheme.
  *
  * On web, this simply redirects to the login URL.
  *
- * @returns Always null, the callback is handled via deep link.
+ * @returns Always null, the callback is handled via deep link / page redirect.
  */
 export async function startOAuthLogin(): Promise<string | null> {
   const loginUrl = getLoginUrl();
@@ -112,20 +113,27 @@ export async function startOAuthLogin(): Promise<string | null> {
     return null;
   }
 
-  const supported = await Linking.canOpenURL(loginUrl);
-  if (!supported) {
-    console.warn("[OAuth] Cannot open login URL: URL scheme not supported");
-    // 可考虑抛出错误或返回错误状态，让调用方处理
-    return null;
-  }
-
   try {
-    await Linking.openURL(loginUrl);
+    // Use the registered manus scheme as the redirect URL prefix so the
+    // OAuth portal sends the callback back to this app (not Expo Go's exps:// scheme).
+    const redirectUrlPrefix = `${env.deepLinkScheme}://`;
+    console.log("[OAuth] Opening auth session:", loginUrl);
+    console.log("[OAuth] Redirect URL prefix:", redirectUrlPrefix);
+
+    const result = await WebBrowser.openAuthSessionAsync(loginUrl, redirectUrlPrefix);
+    console.log("[OAuth] Auth session result type:", result.type);
+
+    if (result.type === "success" && result.url) {
+      // The deep link URL is returned directly — parse it and navigate to callback
+      console.log("[OAuth] Auth session success, URL:", result.url);
+      // Let Expo Router handle the deep link by opening it
+      await Linking.openURL(result.url);
+    } else if (result.type === "cancel" || result.type === "dismiss") {
+      console.log("[OAuth] Auth session cancelled/dismissed");
+    }
   } catch (error) {
-    console.error("[OAuth] Failed to open login URL:", error);
-    // 可考虑抛出错误让调用方处理
+    console.error("[OAuth] Failed to open auth session:", error);
   }
 
-  // The OAuth callback will reopen the app via deep link.
   return null;
 }

@@ -116,3 +116,6 @@
 - [x] Handle notification tap to navigate to the surprise screen
 - [x] Set up Android notification channel (surprises)
 - [x] Mount PushNotificationBootstrap in root layout
+
+## Bug Fixes
+- [x] Fix OAuth redirect URL error — switched to WebBrowser.openAuthSessionAsync with manus:// scheme
