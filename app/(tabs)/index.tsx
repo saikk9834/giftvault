@@ -1,48 +1,390 @@
-import { ScrollView, Text, View, TouchableOpacity } from "react-native";
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  Pressable,
+  TextInput,
+  ScrollView,
+  Platform,
+  Dimensions,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
+import * as Haptics from 'expo-haptics';
+import { useFocusEffect } from '@react-navigation/native';
 
-import { ScreenContainer } from "@/components/screen-container";
+import { ScreenContainer } from '@/components/screen-container';
+import { GiftCard } from '@/components/gift-card';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { OccasionBadge } from '@/components/ui/occasion-badge';
+import { EmptyState } from '@/components/ui/empty-state';
+import { useColors } from '@/hooks/use-colors';
+import { Gift, GiftFilters, Occasion, OCCASIONS, GiftSortKey } from '@/lib/types';
+import { getAllGifts, applyFilters } from '@/lib/store/gift-store';
+import { seedDemoData } from '@/lib/store/seed-data';
 
-/**
- * Home Screen - NativeWind Example
- *
- * This template uses NativeWind (Tailwind CSS for React Native).
- * You can use familiar Tailwind classes directly in className props.
- *
- * Key patterns:
- * - Use `className` instead of `style` for most styling
- * - Theme colors: use tokens directly (bg-background, text-foreground, bg-primary, etc.); no dark: prefix needed
- * - Responsive: standard Tailwind breakpoints work on web
- * - Custom colors defined in tailwind.config.js
- */
-export default function HomeScreen() {
+const SORT_OPTIONS: { key: GiftSortKey; label: string }[] = [
+  { key: 'date_desc', label: 'Newest' },
+  { key: 'date_asc', label: 'Oldest' },
+  { key: 'name_asc', label: 'A → Z' },
+  { key: 'name_desc', label: 'Z → A' },
+];
+
+const DEFAULT_FILTERS: GiftFilters = {
+  search: '',
+  occasion: 'all',
+  tags: [],
+  sortKey: 'date_desc',
+};
+
+export default function VaultScreen() {
+  const colors = useColors();
+  const [allGifts, setAllGifts] = useState<Gift[]>([]);
+  const [filteredGifts, setFilteredGifts] = useState<Gift[]>([]);
+  const [filters, setFilters] = useState<GiftFilters>(DEFAULT_FILTERS);
+  const [showFilters, setShowFilters] = useState(false);
+  const searchRef = useRef<TextInput>(null);
+
+  const loadGifts = useCallback(async () => {
+    await seedDemoData();
+    const gifts = await getAllGifts();
+    setAllGifts(gifts);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadGifts();
+    }, [loadGifts])
+  );
+
+  useEffect(() => {
+    setFilteredGifts(applyFilters(allGifts, filters));
+  }, [allGifts, filters]);
+
+  const updateFilter = <K extends keyof GiftFilters>(key: K, value: GiftFilters[K]) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleAddGift = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    router.push('/add-gift' as any);
+  };
+
+  const totalGifts = allGifts.length;
+  const thisYearGifts = allGifts.filter(
+    (g) => new Date(g.dateReceived).getFullYear() === new Date().getFullYear()
+  ).length;
+
   return (
-    <ScreenContainer className="p-6">
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        <View className="flex-1 gap-8">
-          {/* Hero Section */}
-          <View className="items-center gap-2">
-            <Text className="text-4xl font-bold text-foreground">Welcome</Text>
-            <Text className="text-base text-muted text-center">
-              Edit app/(tabs)/index.tsx to get started
-            </Text>
-          </View>
+    <ScreenContainer containerClassName="bg-background">
+      {/* Header */}
+      <View style={styles.header}>
+        <View>
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>My Vault</Text>
+          <Text style={[styles.headerSub, { color: colors.muted }]}>
+            {totalGifts} gift{totalGifts !== 1 ? 's' : ''} collected
+          </Text>
+        </View>
+        <Pressable
+          onPress={() => setShowFilters(!showFilters)}
+          style={({ pressed }) => [
+            styles.filterBtn,
+            { backgroundColor: showFilters ? colors.primary + '22' : colors.surface, borderColor: colors.border },
+            pressed && { opacity: 0.7 },
+          ]}
+        >
+          <IconSymbol name="slider.horizontal.3" size={20} color={showFilters ? colors.primary : colors.muted} />
+        </Pressable>
+      </View>
 
-          {/* Example Card */}
-          <View className="w-full max-w-sm self-center bg-surface rounded-2xl p-6 shadow-sm border border-border">
-            <Text className="text-lg font-semibold text-foreground mb-2">NativeWind Ready</Text>
-            <Text className="text-sm text-muted leading-relaxed">
-              Use Tailwind CSS classes directly in your React Native components.
-            </Text>
-          </View>
+      {/* Search bar */}
+      <View style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <IconSymbol name="magnifyingglass" size={18} color={colors.muted} />
+        <TextInput
+          ref={searchRef}
+          value={filters.search}
+          onChangeText={(v) => updateFilter('search', v)}
+          placeholder="Search gifts, tags..."
+          placeholderTextColor={colors.muted}
+          style={[styles.searchInput, { color: colors.foreground }]}
+          returnKeyType="search"
+        />
+        {filters.search.length > 0 && (
+          <Pressable onPress={() => updateFilter('search', '')} hitSlop={8}>
+            <IconSymbol name="xmark.circle.fill" size={18} color={colors.muted} />
+          </Pressable>
+        )}
+      </View>
 
-          {/* Example Button */}
-          <View className="items-center">
-            <TouchableOpacity className="bg-primary px-6 py-3 rounded-full active:opacity-80">
-              <Text className="text-background font-semibold">Get Started</Text>
-            </TouchableOpacity>
+      {/* Filter panel */}
+      {showFilters && (
+        <View style={[styles.filterPanel, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          {/* Occasion filter */}
+          <Text style={[styles.filterLabel, { color: colors.muted }]}>Occasion</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
+            <Pressable
+              onPress={() => updateFilter('occasion', 'all')}
+              style={[
+                styles.filterChip,
+                {
+                  backgroundColor: filters.occasion === 'all' ? colors.primary + '33' : colors.surface2,
+                  borderColor: filters.occasion === 'all' ? colors.primary : colors.border,
+                },
+              ]}
+            >
+              <Text style={[styles.filterChipText, { color: filters.occasion === 'all' ? colors.primary : colors.muted }]}>
+                All
+              </Text>
+            </Pressable>
+            {OCCASIONS.map((occ) => (
+              <Pressable
+                key={occ.value}
+                onPress={() => updateFilter('occasion', occ.value)}
+                style={[
+                  styles.filterChip,
+                  {
+                    backgroundColor: filters.occasion === occ.value ? colors.primary + '33' : colors.surface2,
+                    borderColor: filters.occasion === occ.value ? colors.primary : colors.border,
+                  },
+                ]}
+              >
+                <Text style={styles.filterChipEmoji}>{occ.emoji}</Text>
+                <Text style={[styles.filterChipText, { color: filters.occasion === occ.value ? colors.primary : colors.muted }]}>
+                  {occ.label}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+
+          {/* Sort */}
+          <Text style={[styles.filterLabel, { color: colors.muted }]}>Sort by</Text>
+          <View style={styles.sortRow}>
+            {SORT_OPTIONS.map((opt) => (
+              <Pressable
+                key={opt.key}
+                onPress={() => updateFilter('sortKey', opt.key)}
+                style={[
+                  styles.sortChip,
+                  {
+                    backgroundColor: filters.sortKey === opt.key ? colors.primary : colors.surface2,
+                    borderColor: filters.sortKey === opt.key ? colors.primary : colors.border,
+                  },
+                ]}
+              >
+                <Text style={[styles.sortChipText, { color: filters.sortKey === opt.key ? '#fff' : colors.muted }]}>
+                  {opt.label}
+                </Text>
+              </Pressable>
+            ))}
           </View>
         </View>
-      </ScrollView>
+      )}
+
+      {/* Stats row */}
+      {!showFilters && allGifts.length > 0 && (
+        <View style={styles.statsRow}>
+          <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.statNum, { color: colors.primary }]}>{totalGifts}</Text>
+            <Text style={[styles.statLabel, { color: colors.muted }]}>Total</Text>
+          </View>
+          <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.statNum, { color: colors.secondary }]}>{thisYearGifts}</Text>
+            <Text style={[styles.statLabel, { color: colors.muted }]}>This Year</Text>
+          </View>
+          <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.statNum, { color: colors.gold }]}>
+              {new Set(allGifts.map((g) => g.occasion)).size}
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.muted }]}>Occasions</Text>
+          </View>
+        </View>
+      )}
+
+      {/* Gift Grid */}
+      {filteredGifts.length === 0 ? (
+        <EmptyState
+          emoji="🎁"
+          title={allGifts.length === 0 ? 'Your vault is empty' : 'No gifts found'}
+          subtitle={
+            allGifts.length === 0
+              ? 'Start logging the gifts you receive and build your memory vault.'
+              : 'Try adjusting your search or filters.'
+          }
+          actionLabel={allGifts.length === 0 ? 'Add First Gift' : undefined}
+          onAction={allGifts.length === 0 ? handleAddGift : undefined}
+        />
+      ) : (
+        <FlatList
+          data={filteredGifts}
+          keyExtractor={(item) => item.id}
+          numColumns={2}
+          columnWrapperStyle={styles.row}
+          contentContainerStyle={styles.grid}
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item, index }) => <GiftCard gift={item} index={index} />}
+        />
+      )}
+
+      {/* FAB */}
+      <Pressable
+        onPress={handleAddGift}
+        style={({ pressed }) => [styles.fab, pressed && { transform: [{ scale: 0.93 }] }]}
+      >
+        <LinearGradient
+          colors={['#C084FC', '#F472B6']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.fabGradient}
+        >
+          <IconSymbol name="plus" size={28} color="#fff" />
+        </LinearGradient>
+      </Pressable>
     </ScreenContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 12,
+  },
+  headerTitle: {
+    fontSize: 32,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  headerSub: {
+    fontSize: 13,
+    fontWeight: '400',
+    marginTop: 2,
+  },
+  filterBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '400',
+  },
+  filterPanel: {
+    marginHorizontal: 20,
+    marginBottom: 12,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  filterLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  filterRow: {
+    marginBottom: 12,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginRight: 8,
+    gap: 4,
+  },
+  filterChipEmoji: {
+    fontSize: 13,
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  sortRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  sortChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  sortChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    marginBottom: 16,
+    gap: 10,
+  },
+  statCard: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  statNum: {
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  row: {
+    paddingHorizontal: 20,
+    justifyContent: 'space-between',
+  },
+  grid: {
+    paddingBottom: 100,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    borderRadius: 28,
+    shadowColor: '#C084FC',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  fabGradient: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

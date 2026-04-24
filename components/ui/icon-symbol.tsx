@@ -5,25 +5,56 @@ import { SymbolWeight, SymbolViewProps } from "expo-symbols";
 import { ComponentProps } from "react";
 import { OpaqueColorValue, type StyleProp, type TextStyle } from "react-native";
 
-type IconMapping = Record<SymbolViewProps["name"], ComponentProps<typeof MaterialIcons>["name"]>;
+type IconMapping = Record<string, ComponentProps<typeof MaterialIcons>["name"]>;
 type IconSymbolName = keyof typeof MAPPING;
 
 /**
- * Add your SF Symbols to Material Icons mappings here.
- * - see Material Icons in the [Icons Directory](https://icons.expo.fyi).
- * - see SF Symbols in the [SF Symbols](https://developer.apple.com/sf-symbols/) app.
+ * SF Symbols to Material Icons mappings for GiftVault
  */
 const MAPPING = {
+  // Navigation tabs
   "house.fill": "home",
+  "gift.fill": "card-giftcard",
+  "person.2.fill": "people",
+  "person.fill": "person",
+  "sparkles": "auto-awesome",
+
+  // Actions
   "paperplane.fill": "send",
-  "chevron.left.forwardslash.chevron.right": "code",
+  "plus": "add",
+  "plus.circle.fill": "add-circle",
+  "magnifyingglass": "search",
+  "slider.horizontal.3": "tune",
+  "arrow.left": "arrow-back",
+  "xmark": "close",
+  "xmark.circle.fill": "cancel",
+  "checkmark": "check",
+  "checkmark.circle.fill": "check-circle",
+  "pencil": "edit",
+  "trash": "delete",
+  "square.and.arrow.up": "share",
+  "camera.fill": "camera-alt",
+  "photo.fill": "photo-library",
+  "calendar": "calendar-today",
+  "tag.fill": "label",
+  "lock.fill": "lock",
+  "lock.open.fill": "lock-open",
+  "bell.fill": "notifications",
+  "gear": "settings",
   "chevron.right": "chevron-right",
+  "chevron.left": "chevron-left",
+  "chevron.left.forwardslash.chevron.right": "code",
+  "ellipsis": "more-horiz",
+  "star.fill": "star",
+  "heart.fill": "favorite",
+  "clock.fill": "schedule",
+  "person.badge.plus": "person-add",
+  "link": "link",
+  "info.circle": "info",
 } as IconMapping;
 
 /**
  * An icon component that uses native SF Symbols on iOS, and Material Icons on Android and web.
- * This ensures a consistent look across platforms, and optimal resource usage.
- * Icon `name`s are based on SF Symbols and require manual mapping to Material Icons.
  */
 export function IconSymbol({
   name,
@@ -37,5 +68,5 @@ export function IconSymbol({
   style?: StyleProp<TextStyle>;
   weight?: SymbolWeight;
 }) {
-  return <MaterialIcons color={color} size={size} name={MAPPING[name]} style={style} />;
+  return <MaterialIcons color={color} size={size} name={MAPPING[name] ?? "help"} style={style} />;
 }
