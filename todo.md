@@ -121,3 +121,4 @@
 - [x] Fix OAuth redirect URL error — switched to WebBrowser.openAuthSessionAsync with manus:// scheme
 - [x] Fix OAuth: use HTTPS /api/oauth/mobile as redirectUri (portal accepts https://), server redirects back via manus:// deep link
 - [x] Fix OAuth 'code and state are required' — use clean redirect URI (no query params), encode scheme in state JSON, server decodes state to determine native redirect
+- [x] Fix sign-out button — use useAuth().logout() to clear SecureStore token + cached user, then redirect to /login

@@ -20,6 +20,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { GradientButton } from '@/components/ui/gradient-button';
 import { useColors } from '@/hooks/use-colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/use-auth';
 import { trpc } from '@/lib/trpc';
 
@@ -74,14 +75,14 @@ function SettingsRow({ icon, label, value, onPress, rightElement }: {
 export default function ProfileScreen() {
   const colors = useColors();
   const colorScheme = useColorScheme();
-  const { user, isAuthenticated } = useAuth();
+  const router = useRouter();
+  const { user, isAuthenticated, logout } = useAuth();
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState(user?.name ?? '');
 
   const { data: gifts = [] } = trpc.gifts.list.useQuery(undefined, { enabled: isAuthenticated });
   const { data: surprises = [] } = trpc.surprises.list.useQuery(undefined, { enabled: isAuthenticated });
   const { data: friendsList = [] } = trpc.friends.list.useQuery(undefined, { enabled: isAuthenticated });
-  const logoutMutation = trpc.auth.logout.useMutation();
 
   const stats = {
     gifts: gifts.length,
@@ -104,9 +105,23 @@ export default function ProfileScreen() {
   const handleLogout = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: async () => {
-        await logoutMutation.mutateAsync();
-      }},
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await logout();
+            if (Platform.OS !== 'web') {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            }
+            // Navigate to login screen after sign out
+            router.replace('/login' as any);
+          } catch (err) {
+            console.error('[Profile] Logout error:', err);
+            Alert.alert('Error', 'Failed to sign out. Please try again.');
+          }
+        },
+      },
     ]);
   };
 
