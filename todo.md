@@ -119,3 +119,4 @@
 
 ## Bug Fixes
 - [x] Fix OAuth redirect URL error — switched to WebBrowser.openAuthSessionAsync with manus:// scheme
+- [x] Fix OAuth: use HTTPS /api/oauth/mobile as redirectUri (portal accepts https://), server redirects back via manus:// deep link

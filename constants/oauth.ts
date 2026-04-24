@@ -66,21 +66,24 @@ const encodeState = (value: string) => {
 
 /**
  * Get the redirect URI for OAuth callback.
- * - Web: uses API server callback endpoint
- * - Native: uses deep link scheme
+ * - Web: uses API server callback endpoint (HTTPS, accepted by OAuth portal)
+ * - Native: uses the HTTPS /api/oauth/mobile endpoint which then redirects back
+ *   to the app via the manus:// deep link. This is required because the OAuth
+ *   portal only accepts http/https/manus schemes — not manus20260424094341://.
  */
-export const getRedirectUri = () => {
-  if (ReactNative.Platform.OS === "web") {
+export const getRedirectUri = (isNative = false) => {
+  if (ReactNative.Platform.OS === "web" && !isNative) {
     return `${getApiBaseUrl()}/api/oauth/callback`;
   } else {
-    return Linking.createURL("/oauth/callback", {
-      scheme: env.deepLinkScheme,
-    });
+    // Use the HTTPS server endpoint as the redirect URI (portal accepts https://)
+    // The server will then redirect back to the app via manus:// deep link
+    const apiBase = getApiBaseUrl();
+    return `${apiBase}/api/oauth/mobile?redirect=1&scheme=${encodeURIComponent(env.deepLinkScheme)}`;
   }
 };
 
-export const getLoginUrl = () => {
-  const redirectUri = getRedirectUri();
+export const getLoginUrl = (isNative = false) => {
+  const redirectUri = getRedirectUri(isNative);
   const state = encodeState(redirectUri);
 
   const url = new URL(`${OAUTH_PORTAL_URL}/app-auth`);
@@ -103,33 +106,35 @@ export const getLoginUrl = () => {
  * @returns Always null, the callback is handled via deep link / page redirect.
  */
 export async function startOAuthLogin(): Promise<string | null> {
-  const loginUrl = getLoginUrl();
-
   if (ReactNative.Platform.OS === "web") {
-    // On web, just redirect
+    // On web, use the standard web login URL (HTTPS redirect to /api/oauth/callback)
+    const loginUrl = getLoginUrl(false);
     if (typeof window !== "undefined") {
       window.location.href = loginUrl;
     }
     return null;
   }
 
-  try {
-    // Use the registered manus scheme as the redirect URL prefix so the
-    // OAuth portal sends the callback back to this app (not Expo Go's exps:// scheme).
-    const redirectUrlPrefix = `${env.deepLinkScheme}://`;
-    console.log("[OAuth] Opening auth session:", loginUrl);
-    console.log("[OAuth] Redirect URL prefix:", redirectUrlPrefix);
+  // On native: use HTTPS server endpoint as redirectUri (portal accepts https://)
+  // The server exchanges the code and redirects back to the app via manus:// deep link
+  const loginUrl = getLoginUrl(true);
+  const deepLinkPrefix = `${env.deepLinkScheme}://`;
 
-    const result = await WebBrowser.openAuthSessionAsync(loginUrl, redirectUrlPrefix);
-    console.log("[OAuth] Auth session result type:", result.type);
+  console.log("[OAuth] Native login URL:", loginUrl);
+  console.log("[OAuth] Waiting for deep link prefix:", deepLinkPrefix);
+
+  try {
+    // openAuthSessionAsync opens an in-app browser and watches for a redirect
+    // to a URL starting with deepLinkPrefix, then closes the browser and returns it.
+    const result = await WebBrowser.openAuthSessionAsync(loginUrl, deepLinkPrefix);
+    console.log("[OAuth] Auth session result:", result.type);
 
     if (result.type === "success" && result.url) {
-      // The deep link URL is returned directly — parse it and navigate to callback
-      console.log("[OAuth] Auth session success, URL:", result.url);
-      // Let Expo Router handle the deep link by opening it
+      console.log("[OAuth] Deep link received:", result.url);
+      // Let Expo Router handle the deep link (routes to /oauth/callback)
       await Linking.openURL(result.url);
     } else if (result.type === "cancel" || result.type === "dismiss") {
-      console.log("[OAuth] Auth session cancelled/dismissed");
+      console.log("[OAuth] Auth session cancelled by user");
     }
   } catch (error) {
     console.error("[OAuth] Failed to open auth session:", error);

@@ -99,6 +99,8 @@ export function registerOAuthRoutes(app: Express) {
   app.get("/api/oauth/mobile", async (req: Request, res: Response) => {
     const code = getQueryParam(req, "code");
     const state = getQueryParam(req, "state");
+    // Optional: deep link scheme passed as a query param so the server can redirect back
+    const deepLinkScheme = getQueryParam(req, "scheme") ?? "manus";
 
     if (!code || !state) {
       res.status(400).json({ error: "code and state are required" });
@@ -118,10 +120,22 @@ export function registerOAuthRoutes(app: Express) {
       const cookieOptions = getSessionCookieOptions(req);
       res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
 
-      res.json({
-        app_session_id: sessionToken,
-        user: buildUserResponse(user),
-      });
+      // Check if this is a native mobile request (wants a deep link redirect)
+      // or a JSON API request (wants JSON response)
+      const wantsRedirect = getQueryParam(req, "redirect") === "1";
+      if (wantsRedirect) {
+        // Redirect back to the app via deep link, carrying the session token and user info
+        const userJson = Buffer.from(JSON.stringify(buildUserResponse(user))).toString("base64");
+        const deepLinkUrl = `${deepLinkScheme}://oauth/callback?sessionToken=${encodeURIComponent(sessionToken)}&user=${encodeURIComponent(userJson)}`;
+        console.log("[OAuth] Redirecting to app deep link:", deepLinkScheme + "://oauth/callback");
+        res.redirect(302, deepLinkUrl);
+      } else {
+        // Legacy JSON response for direct API calls
+        res.json({
+          app_session_id: sessionToken,
+          user: buildUserResponse(user),
+        });
+      }
     } catch (error) {
       console.error("[OAuth] Mobile exchange failed", error);
       res.status(500).json({ error: "OAuth mobile exchange failed" });
