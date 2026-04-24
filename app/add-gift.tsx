@@ -22,7 +22,8 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { GradientButton } from '@/components/ui/gradient-button';
 import { TagChip } from '@/components/ui/tag-chip';
 import { Occasion, OCCASIONS } from '@/lib/types';
-import { addGift } from '@/lib/store/gift-store';
+import { trpc } from '@/lib/trpc';
+import * as FileSystem from 'expo-file-system/legacy';
 
 export default function AddGiftScreen() {
   const colors = useColors();
@@ -38,6 +39,11 @@ export default function AddGiftScreen() {
   const [tags, setTags] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const utils = trpc.useUtils();
+  const createGift = trpc.gifts.create.useMutation({
+    onSuccess: () => utils.gifts.list.invalidate(),
+  });
+  const uploadPhoto = trpc.gifts.uploadPhoto.useMutation();
 
   const pickPhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -71,9 +77,21 @@ export default function AddGiftScreen() {
     }
     setSaving(true);
     try {
-      await addGift({
+      // Upload photos to cloud storage
+      const uploadedUrls: string[] = [];
+      for (const uri of photos) {
+        try {
+          const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+          const fileName = `gift-${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+          const { url } = await uploadPhoto.mutateAsync({ base64, mimeType: 'image/jpeg', fileName });
+          uploadedUrls.push(url);
+        } catch {
+          // If upload fails, skip photo
+        }
+      }
+      await createGift.mutateAsync({
         title: title.trim(),
-        photos,
+        photos: uploadedUrls,
         dateReceived,
         occasion,
         tags,
@@ -83,7 +101,11 @@ export default function AddGiftScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
       router.back();
-    } catch (e) {
+    } catch (e: any) {
+      if (e?.data?.code === 'UNAUTHORIZED') {
+        router.push('/login' as any);
+        return;
+      }
       Alert.alert('Error', 'Failed to save gift. Please try again.');
     } finally {
       setSaving(false);

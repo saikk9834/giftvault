@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -18,8 +18,8 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Avatar } from '@/components/ui/avatar';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useColors } from '@/hooks/use-colors';
-import { SurpriseGift } from '@/lib/types';
-import { getAllSurprises } from '@/lib/store/surprise-store';
+import { useAuth } from '@/hooks/use-auth';
+import { trpc } from '@/lib/trpc';
 
 function CountdownChip({ deliveryDate, isUnlocked }: { deliveryDate: string; isUnlocked: boolean }) {
   const colors = useColors();
@@ -54,7 +54,9 @@ function CountdownChip({ deliveryDate, isUnlocked }: { deliveryDate: string; isU
   );
 }
 
-function SurpriseCard({ item }: { item: SurpriseGift }) {
+type SurpriseCardItem = { id: string; senderId: number; senderName: string; senderAvatar?: string | null; recipientId: number; recipientName: string; giftContent: string; giftImage?: string | null; puzzle: string; answer: string; deliveryDate: string; isUnlocked: boolean; };
+
+function SurpriseCard({ item }: { item: SurpriseCardItem }) {
   const colors = useColors();
   const delivery = new Date(item.deliveryDate);
   const available = isPast(delivery);
@@ -123,16 +125,30 @@ function SurpriseCard({ item }: { item: SurpriseGift }) {
 
 export default function SurprisesScreen() {
   const colors = useColors();
-  const [surprises, setSurprises] = useState<SurpriseGift[]>([]);
+  const { user, isAuthenticated } = useAuth();
 
-  useFocusEffect(
-    useCallback(() => {
-      getAllSurprises().then(setSurprises);
-    }, [])
+  const { data: rawSurprises = [], refetch } = trpc.surprises.list.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+
+  useFocusEffect(useCallback(() => { if (isAuthenticated) refetch(); }, [isAuthenticated]));
+
+  const incoming = useMemo(() =>
+    rawSurprises.filter((s) => s.recipientId === user?.id).map((s) => ({
+      ...s,
+      id: String(s.id),
+      deliveryDate: s.deliveryDate instanceof Date ? s.deliveryDate.toISOString() : String(s.deliveryDate),
+    })),
+    [rawSurprises, user]
   );
-
-  const incoming = surprises.filter((s) => s.recipientId === 'me');
-  const sent = surprises.filter((s) => s.senderId === 'me');
+  const sent = useMemo(() =>
+    rawSurprises.filter((s) => s.senderId === user?.id).map((s) => ({
+      ...s,
+      id: String(s.id),
+      deliveryDate: s.deliveryDate instanceof Date ? s.deliveryDate.toISOString() : String(s.deliveryDate),
+    })),
+    [rawSurprises, user]
+  );
 
   const handleSend = () => {
     if (Platform.OS !== 'web') {
@@ -140,6 +156,20 @@ export default function SurprisesScreen() {
     }
     router.push('/send-surprise' as any);
   };
+
+  if (!isAuthenticated) {
+    return (
+      <ScreenContainer containerClassName="bg-background">
+        <EmptyState
+          emoji="🎁"
+          title="Sign in to see surprises"
+          subtitle="Send and receive interactive surprise gifts with friends."
+          actionLabel="Sign In"
+          onAction={() => router.push('/login' as any)}
+        />
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer containerClassName="bg-background">

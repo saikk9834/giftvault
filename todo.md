@@ -76,3 +76,26 @@
 - [x] FAB with purple-pink gradient
 - [ ] Card entrance staggered animations
 - [ ] Loading skeletons for gift grid
+
+## Cloud Database Migration
+- [x] Define gifts table in Drizzle schema
+- [x] Define surprises table in Drizzle schema
+- [x] Define friends table in Drizzle schema
+- [x] Run db:push migration
+- [x] Build gifts tRPC router (list, create, update, delete, getById)
+- [x] Build surprises tRPC router (list, create, unlock, delete)
+- [x] Build friends tRPC router (list, add, accept, remove)
+- [x] Build photo upload tRPC mutation (S3 storage)
+- [x] Replace gift-store.ts AsyncStorage with tRPC hooks
+- [x] Replace surprise-store.ts AsyncStorage with tRPC hooks
+- [x] Replace friends-store.ts AsyncStorage with tRPC hooks
+- [x] Add login screen with Manus OAuth
+- [x] Protect all screens behind auth check
+- [x] Update Vault screen to use tRPC queries
+- [x] Update Add Gift screen to use tRPC mutations
+- [x] Update Gift Detail screen to use tRPC queries
+- [x] Update Surprises screen to use tRPC queries
+- [x] Update Send Surprise screen to use tRPC mutations
+- [x] Update Friends screen to use tRPC queries
+- [x] Update Profile screen to use auth user data
+- [x] Write tRPC integration tests

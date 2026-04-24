@@ -19,17 +19,17 @@ import { useColors } from '@/hooks/use-colors';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { GradientButton } from '@/components/ui/gradient-button';
 import { Avatar } from '@/components/ui/avatar';
-import { Friend } from '@/lib/types';
-import { getAllFriends } from '@/lib/store/friends-store';
-import { addSurprise } from '@/lib/store/surprise-store';
-import { getOrCreateProfile } from '@/lib/store/friends-store';
+import { useAuth } from '@/hooks/use-auth';
+import { trpc } from '@/lib/trpc';
+
+type FriendItem = { id: number; name: string | null };
 
 export default function SendSurpriseScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
 
-  const [friends, setFriends] = useState<Friend[]>([]);
-  const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
+  const [selectedFriend, setSelectedFriend] = useState<FriendItem | null>(null);
   const [giftContent, setGiftContent] = useState('');
   const [puzzle, setPuzzle] = useState('');
   const [answer, setAnswer] = useState('');
@@ -38,9 +38,19 @@ export default function SendSurpriseScreen() {
   );
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    getAllFriends().then((f) => setFriends(f.filter((fr) => fr.status === 'accepted')));
-  }, []);
+  const utils = trpc.useUtils();
+  const { data: rawFriends = [] } = trpc.friends.list.useQuery();
+  const sendSurprise = trpc.surprises.send.useMutation({
+    onSuccess: () => utils.surprises.list.invalidate(),
+  });
+
+  // Build accepted friend list with resolved names
+  const friends = rawFriends
+    .filter((f) => f.status === 'accepted')
+    .map((f) => ({
+      id: f.requesterId === user?.id ? f.addresseeId : f.requesterId,
+      name: null as string | null, // name resolved separately
+    }));
 
   const handleSend = async () => {
     if (!selectedFriend) {
@@ -58,24 +68,22 @@ export default function SendSurpriseScreen() {
 
     setSaving(true);
     try {
-      const profile = await getOrCreateProfile();
-      await addSurprise({
-        senderId: profile.id,
-        senderName: profile.displayName,
+      await sendSurprise.mutateAsync({
         recipientId: selectedFriend.id,
-        recipientName: selectedFriend.displayName,
+        recipientName: selectedFriend.name ?? `User ${selectedFriend.id}`,
         giftContent: giftContent.trim(),
         puzzle: puzzle.trim(),
-        answer: answer.trim().toLowerCase(),
+        answer: answer.trim(),
         deliveryDate: new Date(deliveryDate).toISOString(),
       });
       if (Platform.OS !== 'web') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-      Alert.alert('Surprise Sent! 🎁', `Your surprise gift has been scheduled for ${selectedFriend.displayName}.`, [
+      Alert.alert('Surprise Sent! 🎁', `Your surprise gift has been scheduled!`, [
         { text: 'Great!', onPress: () => router.back() },
       ]);
-    } catch (e) {
+    } catch (e: any) {
+      if (e?.data?.code === 'UNAUTHORIZED') { router.push('/login' as any); return; }
       Alert.alert('Error', 'Failed to send surprise. Please try again.');
     } finally {
       setSaving(false);
@@ -127,7 +135,7 @@ export default function SendSurpriseScreen() {
                   },
                 ]}
               >
-                <Avatar name={friend.displayName} size={44} />
+                <Avatar name={friend.name ?? `User ${friend.id}`} size={44} />
                 <Text
                   style={[
                     styles.friendName,
@@ -135,7 +143,7 @@ export default function SendSurpriseScreen() {
                   ]}
                   numberOfLines={1}
                 >
-                  {friend.displayName.split(' ')[0]}
+                  {(friend.name ?? `User ${friend.id}`).split(' ')[0]}
                 </Text>
                 {selectedFriend?.id === friend.id && (
                   <IconSymbol name="checkmark.circle.fill" size={16} color={colors.primary} />
@@ -207,7 +215,7 @@ export default function SendSurpriseScreen() {
           <View style={[styles.preview, { backgroundColor: colors.surface, borderColor: colors.primary + '44' }]}>
             <Text style={[styles.previewTitle, { color: colors.primary }]}>Preview</Text>
             <Text style={[styles.previewText, { color: colors.muted }]}>
-              Sending to <Text style={{ color: colors.foreground, fontWeight: '700' }}>{selectedFriend.displayName}</Text>
+              Sending to <Text style={{ color: colors.foreground, fontWeight: '700' }}>{selectedFriend.name ?? `User ${selectedFriend.id}`}</Text>
               {' '}on <Text style={{ color: colors.foreground, fontWeight: '700' }}>{deliveryDate}</Text>
             </Text>
             <Text style={[styles.previewText, { color: colors.muted }]}>

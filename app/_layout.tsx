@@ -88,6 +88,7 @@ export default function RootLayout() {
           <Stack screenOptions={{ headerShown: false, animation: 'slide_from_bottom' }}>
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="oauth/callback" />
+            <Stack.Screen name="login" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
             <Stack.Screen name="gift/[id]" options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="surprise/[id]" options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="add-gift" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />

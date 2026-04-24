@@ -89,4 +89,136 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// ─── Gifts ────────────────────────────────────────────────────────────────────
+
+import { gifts, friends, surprises } from "../drizzle/schema";
+import type { InsertGift, InsertSurprise } from "../drizzle/schema";
+import { and, desc, or } from "drizzle-orm";
+
+export async function getUserGifts(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(gifts).where(eq(gifts.userId, userId)).orderBy(desc(gifts.createdAt));
+}
+
+export async function getGiftById(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(gifts).where(and(eq(gifts.id, id), eq(gifts.userId, userId))).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function createGift(data: InsertGift) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  const result = await db.insert(gifts).values(data);
+  return result[0].insertId as number;
+}
+
+export async function updateGift(id: number, userId: number, data: Partial<InsertGift>) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.update(gifts).set({ ...data, updatedAt: new Date() }).where(and(eq(gifts.id, id), eq(gifts.userId, userId)));
+}
+
+export async function deleteGift(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.delete(gifts).where(and(eq(gifts.id, id), eq(gifts.userId, userId)));
+}
+
+// ─── Surprises ────────────────────────────────────────────────────────────────
+
+export async function getSurprisesForUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(surprises).where(
+    or(eq(surprises.recipientId, userId), eq(surprises.senderId, userId))
+  ).orderBy(desc(surprises.createdAt));
+}
+
+export async function getSurpriseById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(surprises).where(eq(surprises.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function createSurprise(data: InsertSurprise) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  const result = await db.insert(surprises).values(data);
+  return result[0].insertId as number;
+}
+
+export async function unlockSurprise(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.update(surprises).set({ isUnlocked: true, unlockedAt: new Date() }).where(
+    and(eq(surprises.id, id), eq(surprises.recipientId, userId))
+  );
+}
+
+export async function deleteSurprise(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.delete(surprises).where(
+    and(eq(surprises.id, id), or(eq(surprises.senderId, userId), eq(surprises.recipientId, userId)))
+  );
+}
+
+// ─── Friends ─────────────────────────────────────────────────────────────────
+
+export async function getFriendsForUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(friends).where(
+    or(eq(friends.requesterId, userId), eq(friends.addresseeId, userId))
+  ).orderBy(desc(friends.createdAt));
+}
+
+export async function sendFriendRequest(requesterId: number, addresseeId: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  // Check if already exists
+  const existing = await db.select().from(friends).where(
+    or(
+      and(eq(friends.requesterId, requesterId), eq(friends.addresseeId, addresseeId)),
+      and(eq(friends.requesterId, addresseeId), eq(friends.addresseeId, requesterId))
+    )
+  ).limit(1);
+  if (existing.length > 0) throw new Error('Friend request already exists');
+  const result = await db.insert(friends).values({ requesterId, addresseeId, status: 'pending' });
+  return result[0].insertId as number;
+}
+
+export async function acceptFriendRequest(id: number, addresseeId: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.update(friends).set({ status: 'accepted', updatedAt: new Date() }).where(
+    and(eq(friends.id, id), eq(friends.addresseeId, addresseeId))
+  );
+}
+
+export async function removeFriend(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.delete(friends).where(
+    and(eq(friends.id, id), or(eq(friends.requesterId, userId), eq(friends.addresseeId, userId)))
+  );
+}
+
+export async function getUserById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function searchUserByName(name: string, excludeUserId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  // Simple search: find users whose name contains the query (case-insensitive handled by DB)
+  const allUsers = await db.select({ id: users.id, name: users.name, email: users.email }).from(users);
+  return allUsers.filter(u => u.id !== excludeUserId && u.name?.toLowerCase().includes(name.toLowerCase()));
+}

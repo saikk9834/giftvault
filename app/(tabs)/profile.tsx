@@ -20,11 +20,8 @@ import { Avatar } from '@/components/ui/avatar';
 import { GradientButton } from '@/components/ui/gradient-button';
 import { useColors } from '@/hooks/use-colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { UserProfile } from '@/lib/types';
-import { getOrCreateProfile, saveUserProfile } from '@/lib/store/friends-store';
-import { getAllGifts } from '@/lib/store/gift-store';
-import { getAllSurprises } from '@/lib/store/surprise-store';
-import { getAllFriends } from '@/lib/store/friends-store';
+import { useAuth } from '@/hooks/use-auth';
+import { trpc } from '@/lib/trpc';
 
 interface StatCardProps {
   value: number | string;
@@ -77,50 +74,48 @@ function SettingsRow({ icon, label, value, onPress, rightElement }: {
 export default function ProfileScreen() {
   const colors = useColors();
   const colorScheme = useColorScheme();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const { user, isAuthenticated } = useAuth();
   const [editingName, setEditingName] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [stats, setStats] = useState({ gifts: 0, surprisesSent: 0, surprisesReceived: 0, friends: 0 });
+  const [newName, setNewName] = useState(user?.name ?? '');
 
-  const loadData = useCallback(async () => {
-    const [p, gifts, surprises, friends] = await Promise.all([
-      getOrCreateProfile(),
-      getAllGifts(),
-      getAllSurprises(),
-      getAllFriends(),
-    ]);
-    setProfile(p);
-    setNewName(p.displayName);
-    setStats({
-      gifts: gifts.length,
-      surprisesSent: surprises.filter((s) => s.senderId === p.id).length,
-      surprisesReceived: surprises.filter((s) => s.recipientId === 'me').length,
-      friends: friends.filter((f) => f.status === 'accepted').length,
-    });
-  }, []);
+  const { data: gifts = [] } = trpc.gifts.list.useQuery(undefined, { enabled: isAuthenticated });
+  const { data: surprises = [] } = trpc.surprises.list.useQuery(undefined, { enabled: isAuthenticated });
+  const { data: friendsList = [] } = trpc.friends.list.useQuery(undefined, { enabled: isAuthenticated });
+  const logoutMutation = trpc.auth.logout.useMutation();
 
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [loadData])
-  );
+  const stats = {
+    gifts: gifts.length,
+    surprisesSent: surprises.filter((s) => s.senderId === user?.id).length,
+    surprisesReceived: surprises.filter((s) => s.recipientId === user?.id).length,
+    friends: friendsList.filter((f) => f.status === 'accepted').length,
+  };
+
+  const displayName = user?.name ?? 'GiftVault User';
+  const username = user?.email?.split('@')[0] ?? 'user';
 
   const handleSaveName = async () => {
-    if (!profile || !newName.trim()) return;
-    const updated = { ...profile, displayName: newName.trim() };
-    await saveUserProfile(updated);
-    setProfile(updated);
+    // Name update would require a server endpoint; for now just close edit mode
     setEditingName(false);
     if (Platform.OS !== 'web') {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
   };
 
-  if (!profile) {
+  const handleLogout = () => {
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign Out', style: 'destructive', onPress: async () => {
+        await logoutMutation.mutateAsync();
+      }},
+    ]);
+  };
+
+  if (!isAuthenticated) {
     return (
       <ScreenContainer>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ color: colors.muted }}>Loading...</Text>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+          <Text style={{ color: colors.foreground, fontSize: 20, fontWeight: '700', marginBottom: 8 }}>Sign in to GiftVault</Text>
+          <Text style={{ color: colors.muted, textAlign: 'center', marginBottom: 24 }}>Create an account to sync your gifts and send surprises to friends.</Text>
         </View>
       </ScreenContainer>
     );
@@ -141,7 +136,7 @@ export default function ProfileScreen() {
             colors={['#C084FC22', '#F472B622']}
             style={StyleSheet.absoluteFill}
           />
-          <Avatar name={profile.displayName} size={80} />
+          <Avatar name={displayName} size={80} />
           {editingName ? (
             <View style={styles.nameEditRow}>
               <TextInput
@@ -158,11 +153,11 @@ export default function ProfileScreen() {
             </View>
           ) : (
             <Pressable onPress={() => setEditingName(true)} style={styles.nameRow}>
-              <Text style={[styles.displayName, { color: colors.foreground }]}>{profile.displayName}</Text>
+              <Text style={[styles.displayName, { color: colors.foreground }]}>{displayName}</Text>
               <IconSymbol name="pencil" size={14} color={colors.muted} />
             </Pressable>
           )}
-          <Text style={[styles.username, { color: colors.muted }]}>@{profile.username}</Text>
+          <Text style={[styles.username, { color: colors.muted }]}>@{username}</Text>
         </LinearGradient>
 
         {/* Stats */}

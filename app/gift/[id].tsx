@@ -16,9 +16,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { format } from 'date-fns';
 
-import { Gift } from '@/lib/types';
-import { getGiftById, deleteGift } from '@/lib/store/gift-store';
 import { useColors } from '@/hooks/use-colors';
+import { trpc } from '@/lib/trpc';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { OccasionBadge } from '@/components/ui/occasion-badge';
 import { TagChip } from '@/components/ui/tag-chip';
@@ -29,18 +28,21 @@ export default function GiftDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const [gift, setGift] = useState<Gift | null>(null);
   const [activePhoto, setActivePhoto] = useState(0);
+  const utils = trpc.useUtils();
 
-  const loadGift = useCallback(async () => {
-    if (!id) return;
-    const g = await getGiftById(id);
-    setGift(g);
-  }, [id]);
+  const numericId = id ? parseInt(id, 10) : 0;
+  const { data: rawGift, isLoading } = trpc.gifts.getById.useQuery(
+    { id: numericId },
+    { enabled: !!id && !isNaN(numericId) }
+  );
 
-  useEffect(() => {
-    loadGift();
-  }, [loadGift]);
+  const deleteMutation = trpc.gifts.delete.useMutation({
+    onSuccess: () => {
+      utils.gifts.list.invalidate();
+      router.back();
+    },
+  });
 
   const handleDelete = () => {
     Alert.alert(
@@ -56,21 +58,29 @@ export default function GiftDetailScreen() {
             if (Platform.OS !== 'web') {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
             }
-            await deleteGift(id);
-            router.back();
+            await deleteMutation.mutateAsync({ id: numericId });
           },
         },
       ]
     );
   };
 
-  if (!gift) {
+  if (isLoading || !rawGift) {
     return (
       <View style={[styles.loading, { backgroundColor: colors.background }]}>
-        <Text style={[styles.loadingText, { color: colors.muted }]}>Loading...</Text>
+        <Text style={[styles.loadingText, { color: colors.muted }]}>{isLoading ? 'Loading...' : 'Gift not found'}</Text>
       </View>
     );
   }
+
+  // Normalize DB row
+  const gift = {
+    ...rawGift,
+    id: String(rawGift.id),
+    photos: (() => { try { return JSON.parse(rawGift.photos); } catch { return []; } })() as string[],
+    tags: (() => { try { return JSON.parse(rawGift.tags); } catch { return []; } })() as string[],
+    notes: rawGift.notes ?? undefined,
+  };
 
   const hasPhotos = gift.photos.length > 0;
   const formattedDate = (() => {

@@ -19,9 +19,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { format, isPast } from 'date-fns';
 
-import { SurpriseGift } from '@/lib/types';
-import { getSurpriseById, unlockSurprise, validateAnswer } from '@/lib/store/surprise-store';
 import { useColors } from '@/hooks/use-colors';
+import { trpc } from '@/lib/trpc';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { GradientButton } from '@/components/ui/gradient-button';
 import { Avatar } from '@/components/ui/avatar';
@@ -105,7 +104,6 @@ export default function SurpriseDetailScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
 
-  const [surprise, setSurprise] = useState<SurpriseGift | null>(null);
   const [answer, setAnswer] = useState('');
   const [attempts, setAttempts] = useState(0);
   const [wrongAnim] = useState(new Animated.Value(0));
@@ -114,19 +112,22 @@ export default function SurpriseDetailScreen() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [justUnlocked, setJustUnlocked] = useState(false);
 
-  const load = useCallback(async () => {
-    if (!id) return;
-    const s = await getSurpriseById(id);
-    setSurprise(s);
-    if (s?.isUnlocked) {
+  const numericId = id ? parseInt(id, 10) : 0;
+  const utils = trpc.useUtils();
+  const { data: surprise, isLoading } = trpc.surprises.getById.useQuery(
+    { id: numericId },
+    { enabled: !!id && !isNaN(numericId) }
+  );
+
+  useEffect(() => {
+    if (surprise?.isUnlocked) {
       setBlurIntensity(0);
       revealAnim.setValue(1);
     }
-  }, [id]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  }, [surprise?.isUnlocked]);
+  const unlockMutation = trpc.surprises.unlock.useMutation({
+    onSuccess: () => utils.surprises.list.invalidate(),
+  });
 
   const shakeAnimation = () => {
     Animated.sequence([
@@ -167,31 +168,34 @@ export default function SurpriseDetailScreen() {
   const handleSubmit = async () => {
     if (!surprise || !answer.trim()) return;
 
-    const correct = validateAnswer(surprise, answer);
-    if (correct) {
-      if (Platform.OS !== 'web') {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
-      const updated = await unlockSurprise(surprise.id);
-      if (updated) {
-        setSurprise(updated);
+    try {
+      const result = await unlockMutation.mutateAsync({ id: numericId, answer });
+      if (result.correct || result.alreadyUnlocked) {
+        if (Platform.OS !== 'web') {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
         setJustUnlocked(true);
         triggerReveal();
+        utils.surprises.getById.invalidate({ id: numericId });
+      } else {
+        if (Platform.OS !== 'web') {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        }
+        setAttempts((a) => a + 1);
+        shakeAnimation();
+        setAnswer('');
       }
-    } else {
-      if (Platform.OS !== 'web') {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      }
+    } catch {
       setAttempts((a) => a + 1);
       shakeAnimation();
       setAnswer('');
     }
   };
 
-  if (!surprise) {
+  if (isLoading || !surprise) {
     return (
       <View style={[styles.loading, { backgroundColor: colors.background }]}>
-        <Text style={[{ color: colors.muted, fontSize: 16 }]}>Loading...</Text>
+        <Text style={[{ color: colors.muted, fontSize: 16 }]}>{isLoading ? 'Loading...' : 'Surprise not found'}</Text>
       </View>
     );
   }
