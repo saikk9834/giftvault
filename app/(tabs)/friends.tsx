@@ -108,7 +108,7 @@ export default function FriendsScreen() {
 
   useFocusEffect(useCallback(() => { if (isAuthenticated) refetch(); }, [isAuthenticated]));
 
-  // Normalize friends list — DB only stores ids, names come from user lookup
+  // Normalize friends list — otherName is now joined from the users table server-side
   const friends: FriendRow[] = useMemo(() =>
     rawFriends.map((f) => {
       const isRequester = f.requesterId === user?.id;
@@ -116,13 +116,15 @@ export default function FriendsScreen() {
       const status: FriendRow['status'] = f.status === 'accepted'
         ? 'accepted'
         : isRequester ? 'pending_sent' : 'pending_received';
+      // otherName is provided by the server (joined from users table)
+      const displayName = (f as any).otherName ?? `User ${otherId}`;
       return {
         id: f.id,
         requesterId: f.requesterId,
         addresseeId: f.addresseeId,
         status,
-        displayName: `User ${otherId}`,
-        username: `user${otherId}`,
+        displayName,
+        username: displayName.toLowerCase().replace(/\s+/g, ''),
       };
     }),
     [rawFriends, user]

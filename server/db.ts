@@ -172,9 +172,44 @@ export async function deleteSurprise(id: number, userId: number) {
 export async function getFriendsForUser(userId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(friends).where(
-    or(eq(friends.requesterId, userId), eq(friends.addresseeId, userId))
-  ).orderBy(desc(friends.createdAt));
+
+  // Alias users table twice so we can join both requester and addressee names
+  const requesterAlias = { id: users.id, name: users.name, email: users.email };
+
+  const rows = await db
+    .select({
+      id: friends.id,
+      requesterId: friends.requesterId,
+      addresseeId: friends.addresseeId,
+      status: friends.status,
+      createdAt: friends.createdAt,
+      updatedAt: friends.updatedAt,
+    })
+    .from(friends)
+    .where(or(eq(friends.requesterId, userId), eq(friends.addresseeId, userId)))
+    .orderBy(desc(friends.createdAt));
+
+  if (rows.length === 0) return [];
+
+  // Collect all unique other-user IDs
+  const otherIds = [...new Set(
+    rows.map((r) => r.requesterId === userId ? r.addresseeId : r.requesterId)
+  )];
+
+  // Fetch their user records in one query
+  const otherUsers = await db
+    .select({ id: users.id, name: users.name, email: users.email })
+    .from(users)
+    .where(or(...otherIds.map((id) => eq(users.id, id))));
+
+  const userMap = new Map(otherUsers.map((u) => [u.id, u]));
+
+  return rows.map((r) => {
+    const otherId = r.requesterId === userId ? r.addresseeId : r.requesterId;
+    const other = userMap.get(otherId);
+    const displayName = other?.name ?? other?.email?.split('@')[0] ?? `User ${otherId}`;
+    return { ...r, otherUserId: otherId, otherName: displayName };
+  });
 }
 
 export async function sendFriendRequest(requesterId: number, addresseeId: number) {

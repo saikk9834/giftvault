@@ -102,3 +102,6 @@
 
 ## Profile Improvements
 - [x] Add sign-out button to Profile tab settings section
+
+## Friends Improvements
+- [x] Show real friend names on Friends screen (join users table in DB query)
