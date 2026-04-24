@@ -43,7 +43,7 @@ const config: ExpoConfig = {
   slug: env.appSlug,
   version: "1.0.0",
   orientation: "portrait",
-  icon: "/manus-storage/icon_d0417c5b.png",
+  icon: "./assets/images/icon.png",
   scheme: env.scheme,
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
@@ -57,7 +57,7 @@ const config: ExpoConfig = {
   android: {
     adaptiveIcon: {
       backgroundColor: "#1A1A2E",
-      foregroundImage: "/manus-storage/android-icon-foreground_35f02f04.png",
+      foregroundImage: "./assets/images/android-icon-foreground.png",
       backgroundImage: "./assets/images/android-icon-background.png",
       monochromeImage: "./assets/images/android-icon-monochrome.png",
     },
@@ -82,7 +82,7 @@ const config: ExpoConfig = {
   web: {
     bundler: "metro",
     output: "static",
-    favicon: "/manus-storage/favicon_071d436d.png",
+    favicon: "./assets/images/favicon.png",
   },
   plugins: [
     "expo-router",
@@ -102,7 +102,7 @@ const config: ExpoConfig = {
     [
       "expo-splash-screen",
       {
-        image: "/manus-storage/splash-icon_f77eabb8.png",
+        image: "./assets/images/splash-icon.png",
         imageWidth: 200,
         resizeMode: "contain",
         backgroundColor: "#0D0D0F",
