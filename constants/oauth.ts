@@ -67,24 +67,40 @@ const encodeState = (value: string) => {
 /**
  * Get the redirect URI for OAuth callback.
  * - Web: uses API server callback endpoint (HTTPS, accepted by OAuth portal)
- * - Native: uses the HTTPS /api/oauth/mobile endpoint which then redirects back
- *   to the app via the manus:// deep link. This is required because the OAuth
- *   portal only accepts http/https/manus schemes — not manus20260424094341://.
+ * - Native: uses the HTTPS /api/oauth/mobile endpoint (clean, no query params)
+ *   The server detects native requests via the state payload and redirects back
+ *   to the app via the manus:// deep link after token exchange.
  */
 export const getRedirectUri = (isNative = false) => {
   if (ReactNative.Platform.OS === "web" && !isNative) {
     return `${getApiBaseUrl()}/api/oauth/callback`;
   } else {
-    // Use the HTTPS server endpoint as the redirect URI (portal accepts https://)
-    // The server will then redirect back to the app via manus:// deep link
+    // IMPORTANT: Use a CLEAN redirect URI with NO query params.
+    // The OAuth portal appends ?code=X&state=Y to the redirect URI.
+    // If the redirect URI already has query params, the portal may strip them
+    // or the token exchange API may reject the redirect URI mismatch.
     const apiBase = getApiBaseUrl();
-    return `${apiBase}/api/oauth/mobile?redirect=1&scheme=${encodeURIComponent(env.deepLinkScheme)}`;
+    return `${apiBase}/api/oauth/mobile`;
   }
 };
 
 export const getLoginUrl = (isNative = false) => {
   const redirectUri = getRedirectUri(isNative);
-  const state = encodeState(redirectUri);
+
+  // For native, encode extra metadata in the state so the server knows
+  // to do a deep link redirect back to the app after token exchange.
+  // State format: base64(redirectUri) for web, base64(JSON) for native.
+  let state: string;
+  if (isNative || ReactNative.Platform.OS !== "web") {
+    const statePayload = JSON.stringify({
+      redirectUri,
+      native: true,
+      scheme: env.deepLinkScheme,
+    });
+    state = encodeState(statePayload);
+  } else {
+    state = encodeState(redirectUri);
+  }
 
   const url = new URL(`${OAUTH_PORTAL_URL}/app-auth`);
   url.searchParams.set("appId", APP_ID);
