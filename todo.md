@@ -99,3 +99,6 @@
 - [x] Update Friends screen to use tRPC queries
 - [x] Update Profile screen to use auth user data
 - [x] Write tRPC integration tests
+
+## Profile Improvements
+- [x] Add sign-out button to Profile tab settings section

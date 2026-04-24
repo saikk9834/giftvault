@@ -51,6 +51,7 @@ const MAPPING = {
   "person.badge.plus": "person-add",
   "link": "link",
   "info.circle": "info",
+  "rectangle.portrait.and.arrow.right": "logout",
 } as IconMapping;
 
 /**

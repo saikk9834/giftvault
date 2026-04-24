@@ -205,6 +205,24 @@ export default function ProfileScreen() {
           />
         </View>
 
+        {/* Sign Out */}
+        <View style={styles.signOutSection}>
+          <Pressable
+            onPress={handleLogout}
+            style={({ pressed }) => [
+              styles.signOutBtn,
+              { borderColor: colors.error + '55', backgroundColor: colors.error + '11' },
+              pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] },
+            ]}
+          >
+            <IconSymbol name="rectangle.portrait.and.arrow.right" size={18} color={colors.error} />
+            <Text style={[styles.signOutText, { color: colors.error }]}>Sign Out</Text>
+          </Pressable>
+          <Text style={[styles.signOutHint, { color: colors.muted }]}>
+            Signed in as {user?.email ?? user?.name ?? 'you'}
+          </Text>
+        </View>
+
         {/* Firebase schema note */}
         <View style={[styles.schemaCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <LinearGradient
@@ -323,4 +341,23 @@ const styles = StyleSheet.create({
   schemaContent: { padding: 16, gap: 6 },
   schemaTitle: { fontSize: 15, fontWeight: '700' },
   schemaSub: { fontSize: 13, lineHeight: 20 },
+  signOutSection: {
+    marginHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 4,
+    gap: 10,
+    alignItems: 'center',
+  },
+  signOutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  signOutText: { fontSize: 16, fontWeight: '700' },
+  signOutHint: { fontSize: 12 },
 });
