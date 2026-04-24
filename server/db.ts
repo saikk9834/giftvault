@@ -91,7 +91,7 @@ export async function getUserByOpenId(openId: string) {
 
 // ─── Gifts ────────────────────────────────────────────────────────────────────
 
-import { gifts, friends, surprises } from "../drizzle/schema";
+import { gifts, friends, surprises, pushTokens } from "../drizzle/schema";
 import type { InsertGift, InsertSurprise } from "../drizzle/schema";
 import { and, desc, or } from "drizzle-orm";
 
@@ -256,4 +256,56 @@ export async function searchUserByName(name: string, excludeUserId: number) {
   // Simple search: find users whose name contains the query (case-insensitive handled by DB)
   const allUsers = await db.select({ id: users.id, name: users.name, email: users.email }).from(users);
   return allUsers.filter(u => u.id !== excludeUserId && u.name?.toLowerCase().includes(name.toLowerCase()));
+}
+
+// ─── Push Tokens ─────────────────────────────────────────────────────────────
+
+/**
+ * Upsert a push token for a user. If the token already exists for this user,
+ * update the platform and timestamp. Otherwise insert a new row.
+ */
+export async function upsertPushToken(userId: number, token: string, platform: string) {
+  const db = await getDb();
+  if (!db) return;
+
+  // Check if this exact token already exists for this user
+  const existing = await db
+    .select({ id: pushTokens.id })
+    .from(pushTokens)
+    .where(and(eq(pushTokens.userId, userId), eq(pushTokens.token, token)))
+    .limit(1);
+
+  if (existing.length > 0) {
+    // Touch updatedAt so we know it's still active
+    await db
+      .update(pushTokens)
+      .set({ platform, updatedAt: new Date() })
+      .where(eq(pushTokens.id, existing[0].id));
+  } else {
+    await db.insert(pushTokens).values({ userId, token, platform });
+  }
+}
+
+/**
+ * Get all push tokens for a given user ID.
+ */
+export async function getPushTokensForUser(userId: number): Promise<string[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({ token: pushTokens.token })
+    .from(pushTokens)
+    .where(eq(pushTokens.userId, userId));
+  return rows.map((r) => r.token);
+}
+
+/**
+ * Remove a push token (e.g. when user logs out or token is invalidated).
+ */
+export async function removePushToken(userId: number, token: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .delete(pushTokens)
+    .where(and(eq(pushTokens.userId, userId), eq(pushTokens.token, token)));
 }

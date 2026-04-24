@@ -105,3 +105,17 @@ export const friends = mysqlTable("friends", {
 
 export type Friend = typeof friends.$inferSelect;
 export type InsertFriend = typeof friends.$inferInsert;
+
+// ─── Push Tokens ─────────────────────────────────────────────────────────────
+
+export const pushTokens = mysqlTable('push_tokens', {
+  id: int('id').autoincrement().primaryKey(),
+  userId: int('userId').notNull(),
+  token: varchar('token', { length: 512 }).notNull(),
+  platform: varchar('platform', { length: 16 }).notNull().default('unknown'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().onUpdateNow().notNull(),
+});
+
+export type PushToken = typeof pushTokens.$inferSelect;
+export type InsertPushToken = typeof pushTokens.$inferInsert;

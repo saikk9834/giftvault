@@ -5,6 +5,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { storagePut } from "./storage";
 import * as db from "./db";
+import { sendExpoPush } from "./push";
 
 // ─── Shared Zod Schemas ───────────────────────────────────────────────────────
 
@@ -137,6 +138,23 @@ const surprisesRouter = router({
         deliveryDate: new Date(input.deliveryDate),
         isUnlocked: false,
       });
+      // Send push notification to recipient if gift is available now
+      const deliveryDate = new Date(input.deliveryDate);
+      const isAvailableNow = deliveryDate <= new Date();
+      if (isAvailableNow) {
+        const tokens = await db.getPushTokensForUser(input.recipientId);
+        if (tokens.length > 0) {
+          await sendExpoPush({
+            to: tokens,
+            title: "\uD83C\uDF81 You have a surprise!",
+            body: `${sender?.name ?? "Someone"} sent you a surprise gift. Tap to reveal it!`,
+            data: { url: `/surprise/${id}` },
+            sound: "default",
+            channelId: "surprises",
+          });
+        }
+      }
+
       return { id };
     }),
 
@@ -201,6 +219,29 @@ const friendsRouter = router({
     }),
 });
 
+// ─── Notifications Router ────────────────────────────────────────────────────
+
+const notificationsRouter = router({
+  /** Register or refresh the device's Expo push token for the current user. */
+  registerToken: protectedProcedure
+    .input(z.object({
+      token: z.string().min(1),
+      platform: z.enum(["ios", "android", "web"]).default("android"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await db.upsertPushToken(ctx.user.id, input.token, input.platform);
+      return { success: true };
+    }),
+
+  /** Remove a push token on logout so the device no longer receives notifications. */
+  removeToken: protectedProcedure
+    .input(z.object({ token: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await db.removePushToken(ctx.user.id, input.token);
+      return { success: true };
+    }),
+});
+
 // ─── App Router ───────────────────────────────────────────────────────────────
 
 export const appRouter = router({
@@ -218,6 +259,7 @@ export const appRouter = router({
   gifts: giftsRouter,
   surprises: surprisesRouter,
   friends: friendsRouter,
+  notifications: notificationsRouter,
 });
 
 export type AppRouter = typeof appRouter;

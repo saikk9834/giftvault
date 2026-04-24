@@ -22,6 +22,13 @@
       "when": 1777051058088,
       "tag": "0002_wide_betty_brant",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1777052403076,
+      "tag": "0003_brainy_rhino",
+      "breakpoints": true
     }
   ]
 }

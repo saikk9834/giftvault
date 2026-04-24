@@ -105,3 +105,14 @@
 
 ## Friends Improvements
 - [x] Show real friend names on Friends screen (join users table in DB query)
+
+## Push Notifications
+- [x] Read expo-notifications DOCS.md
+- [x] Add push_tokens table to Drizzle schema
+- [x] Add registerToken tRPC endpoint to store device push token
+- [x] Add server-side sendPushNotification helper (server/push.ts)
+- [x] Trigger push when a surprise is sent (immediate delivery)
+- [x] Register push token on app startup (client-side, usePushNotifications hook)
+- [x] Handle notification tap to navigate to the surprise screen
+- [x] Set up Android notification channel (surprises)
+- [x] Mount PushNotificationBootstrap in root layout
