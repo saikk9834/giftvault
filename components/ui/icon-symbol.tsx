@@ -1,16 +1,13 @@
-// Fallback for using MaterialIcons on Android and web.
+// Android and web icon implementation using MaterialIcons.
+// iOS uses icon-symbol.ios.tsx (SF Symbols) instead.
 
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { SymbolWeight, SymbolViewProps } from "expo-symbols";
 import { ComponentProps } from "react";
 import { OpaqueColorValue, type StyleProp, type TextStyle } from "react-native";
 
 type IconMapping = Record<string, ComponentProps<typeof MaterialIcons>["name"]>;
 type IconSymbolName = keyof typeof MAPPING;
 
-/**
- * SF Symbols to Material Icons mappings for GiftVault
- */
 const MAPPING = {
   // Navigation tabs
   "house.fill": "home",
@@ -35,12 +32,15 @@ const MAPPING = {
   "square.and.arrow.up": "share",
   "camera.fill": "camera-alt",
   "photo.fill": "photo-library",
+  "photo.on.rectangle": "photo-library",
   "calendar": "calendar-today",
   "tag.fill": "label",
   "lock.fill": "lock",
   "lock.open.fill": "lock-open",
   "bell.fill": "notifications",
   "gear": "settings",
+  "moon.fill": "dark-mode",
+  "envelope.fill": "email",
   "chevron.right": "chevron-right",
   "chevron.left": "chevron-left",
   "chevron.left.forwardslash.chevron.right": "code",
@@ -54,9 +54,6 @@ const MAPPING = {
   "rectangle.portrait.and.arrow.right": "logout",
 } as IconMapping;
 
-/**
- * An icon component that uses native SF Symbols on iOS, and Material Icons on Android and web.
- */
 export function IconSymbol({
   name,
   size = 24,
@@ -67,7 +64,7 @@ export function IconSymbol({
   size?: number;
   color: string | OpaqueColorValue;
   style?: StyleProp<TextStyle>;
-  weight?: SymbolWeight;
+  weight?: string;
 }) {
-  return <MaterialIcons color={color} size={size} name={MAPPING[name] ?? "help"} style={style} />;
+  return <MaterialIcons color={color} size={size} name={MAPPING[name] ?? "help-outline"} style={style} />;
 }

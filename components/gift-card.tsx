@@ -50,19 +50,12 @@ export function GiftCard({ gift }: GiftCardProps) {
     <Pressable
       onPress={handlePress}
       style={({ pressed }) => [
-        styles.card,
-        {
-          width: CARD_WIDTH,
-          height: CARD_HEIGHT,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 6 },
-          shadowOpacity: 0.18,
-          shadowRadius: 16,
-          elevation: 8,
-        },
+        styles.cardShadow,
+        { width: CARD_WIDTH },
         pressed && styles.pressed,
       ]}
     >
+      <View style={[styles.card, { height: CARD_HEIGHT }]}>
       {/* Full-bleed photo or gradient */}
       {hasPhoto ? (
         <Image source={{ uri: gift.photos[0] }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
@@ -96,15 +89,27 @@ export function GiftCard({ gift }: GiftCardProps) {
           </Text>
         )}
       </View>
+      </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
+  // Outer: owns the shadow. Must NOT have overflow:hidden — Android can't
+  // composite elevation shadows and clip masks on the same layer.
+  cardShadow: {
+    borderRadius: 20,
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  // Inner: owns the clip. No elevation here.
   card: {
     borderRadius: 20,
     overflow: 'hidden',
-    marginBottom: 14,
     position: 'relative',
   },
   pressed: {

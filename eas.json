@@ -17,7 +17,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://YOUR_SERVER_URL"
+        "EXPO_PUBLIC_API_BASE_URL": "https://giftvault-production.up.railway.app"
       }
     },
     "production": {
@@ -25,7 +25,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://YOUR_SERVER_URL"
+        "EXPO_PUBLIC_API_BASE_URL": "https://giftvault-production.up.railway.app"
       }
     }
   },
