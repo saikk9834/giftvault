@@ -5,7 +5,10 @@ import {
   StyleSheet,
   Pressable,
   ActivityIndicator,
+  TextInput,
+  KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -14,109 +17,197 @@ import * as Haptics from 'expo-haptics';
 
 import { useColors } from '@/hooks/use-colors';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { startOAuthLogin } from '@/constants/oauth';
+import * as Api from '@/lib/_core/api';
+import * as Auth from '@/lib/_core/auth';
+
+type Mode = 'signin' | 'signup';
 
 export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
+  const [mode, setMode] = useState<Mode>('signin');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const isSignUp = mode === 'signup';
+
+  const handleSubmit = async () => {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
+
+    setError(null);
+
+    if (!email.trim() || !password.trim()) {
+      setError('Email and password are required');
+      return;
+    }
+    if (isSignUp && !name.trim()) {
+      setError('Name is required');
+      return;
+    }
+
     setLoading(true);
     try {
-      await startOAuthLogin();
-      // On native, the OAuth callback will redirect back via deep link
-      // On web, the page will redirect
-    } catch (e) {
-      console.error('[Login] Failed to start OAuth:', e);
-    } finally {
-      // Keep loading on native (waiting for deep link callback)
-      if (Platform.OS === 'web') {
-        setLoading(false);
+      const result = isSignUp
+        ? await Api.signup(name.trim(), email.trim().toLowerCase(), password)
+        : await Api.signin(email.trim().toLowerCase(), password);
+
+      if (result.sessionToken) {
+        await Auth.setSessionToken(result.sessionToken);
       }
+
+      const userInfo: Auth.User = {
+        id: result.user.id,
+        name: result.user.name,
+        email: result.user.email,
+        loginMethod: result.user.loginMethod,
+        lastSignedIn: new Date(result.user.lastSignedIn),
+      };
+      await Auth.setUserInfo(userInfo);
+
+      router.replace('/(tabs)');
+    } catch (e: any) {
+      setError(e?.message ?? 'Something went wrong');
+    } finally {
+      setLoading(false);
     }
   };
 
+  const toggleMode = () => {
+    setError(null);
+    setMode(m => (m === 'signin' ? 'signup' : 'signin'));
+  };
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Background gradient */}
-      <LinearGradient
-        colors={['#0D0D0F', '#1A1A2E', '#0D0D0F']}
-        style={StyleSheet.absoluteFill}
-      />
-      {/* Glow orbs */}
-      <View style={[styles.orb1, { backgroundColor: '#C084FC' }]} />
-      <View style={[styles.orb2, { backgroundColor: '#F472B6' }]} />
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <LinearGradient
+          colors={['#0D0D0F', '#1A1A2E', '#0D0D0F']}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={[styles.orb1, { backgroundColor: '#C084FC' }]} />
+        <View style={[styles.orb2, { backgroundColor: '#F472B6' }]} />
 
-      <View style={[styles.content, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 40 }]}>
-        {/* Logo area */}
-        <View style={styles.logoArea}>
-          <LinearGradient
-            colors={['#C084FC', '#F472B6', '#F59E0B']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.logoGradient}
-          >
-            <Text style={styles.logoEmoji}>🎁</Text>
-          </LinearGradient>
-          <Text style={[styles.appName, { color: colors.foreground }]}>GiftVault</Text>
-          <Text style={[styles.tagline, { color: colors.muted }]}>
-            Your personal gift memory & surprise sharing app
-          </Text>
-        </View>
-
-        {/* Feature highlights */}
-        <View style={styles.features}>
-          {[
-            { icon: 'gift.fill', text: 'Track every gift you receive' },
-            { icon: 'sparkles', text: 'Send interactive surprise gifts' },
-            { icon: 'lock.fill', text: 'Puzzle-locked reveals with confetti' },
-            { icon: 'person.2.fill', text: 'Connect with friends' },
-          ].map((f, i) => (
-            <View key={i} style={styles.featureRow}>
-              <View style={[styles.featureIcon, { backgroundColor: colors.primary + '22' }]}>
-                <IconSymbol name={f.icon as any} size={16} color={colors.primary} />
-              </View>
-              <Text style={[styles.featureText, { color: colors.muted }]}>{f.text}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* CTA */}
-        <View style={styles.cta}>
-          <Pressable
-            onPress={handleLogin}
-            disabled={loading}
-            style={({ pressed }) => [
-              styles.loginBtn,
-              pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
-            ]}
-          >
+        <ScrollView
+          contentContainerStyle={[
+            styles.scroll,
+            { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 40 },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Logo */}
+          <View style={styles.logoArea}>
             <LinearGradient
-              colors={['#C084FC', '#F472B6']}
+              colors={['#C084FC', '#F472B6', '#F59E0B']}
               start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.loginBtnGradient}
+              end={{ x: 1, y: 1 }}
+              style={styles.logoGradient}
             >
-              {loading ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <>
-                  <IconSymbol name="person.fill" size={18} color="#fff" />
-                  <Text style={styles.loginBtnText}>Sign in to GiftVault</Text>
-                </>
-              )}
+              <Text style={styles.logoEmoji}>🎁</Text>
             </LinearGradient>
-          </Pressable>
-          <Text style={[styles.disclaimer, { color: colors.muted }]}>
-            By signing in, you agree to our Terms of Service and Privacy Policy.
-          </Text>
-        </View>
+            <Text style={[styles.appName, { color: colors.foreground }]}>GiftVault</Text>
+            <Text style={[styles.tagline, { color: colors.muted }]}>
+              {isSignUp ? 'Create your account' : 'Welcome back'}
+            </Text>
+          </View>
+
+          {/* Form */}
+          <View style={styles.form}>
+            {isSignUp && (
+              <View style={styles.inputWrapper}>
+                <IconSymbol name="person.fill" size={16} color={colors.muted} style={styles.inputIcon} />
+                <TextInput
+                  style={[styles.input, { color: colors.foreground, borderColor: colors.border }]}
+                  placeholder="Your name"
+                  placeholderTextColor={colors.muted}
+                  value={name}
+                  onChangeText={setName}
+                  autoCapitalize="words"
+                  returnKeyType="next"
+                />
+              </View>
+            )}
+
+            <View style={styles.inputWrapper}>
+              <IconSymbol name="envelope.fill" size={16} color={colors.muted} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: colors.foreground, borderColor: colors.border }]}
+                placeholder="Email address"
+                placeholderTextColor={colors.muted}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="next"
+              />
+            </View>
+
+            <View style={styles.inputWrapper}>
+              <IconSymbol name="lock.fill" size={16} color={colors.muted} style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { color: colors.foreground, borderColor: colors.border }]}
+                placeholder="Password"
+                placeholderTextColor={colors.muted}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                returnKeyType="done"
+                onSubmitEditing={handleSubmit}
+              />
+            </View>
+
+            {error && (
+              <View style={[styles.errorBox, { backgroundColor: '#FF444422', borderColor: '#FF4444' }]}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            )}
+
+            <Pressable
+              onPress={handleSubmit}
+              disabled={loading}
+              style={({ pressed }) => [
+                styles.submitBtn,
+                pressed && { transform: [{ scale: 0.97 }], opacity: 0.9 },
+              ]}
+            >
+              <LinearGradient
+                colors={['#C084FC', '#F472B6']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.submitBtnGradient}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.submitBtnText}>
+                    {isSignUp ? 'Create Account' : 'Sign In'}
+                  </Text>
+                )}
+              </LinearGradient>
+            </Pressable>
+
+            <Pressable onPress={toggleMode} style={styles.toggleBtn}>
+              <Text style={[styles.toggleText, { color: colors.muted }]}>
+                {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
+                <Text style={{ color: colors.primary, fontWeight: '700' }}>
+                  {isSignUp ? 'Sign In' : 'Sign Up'}
+                </Text>
+              </Text>
+            </Pressable>
+          </View>
+        </ScrollView>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -143,19 +234,20 @@ const styles = StyleSheet.create({
     left: -80,
     opacity: 0.06,
   },
-  content: {
-    flex: 1,
+  scroll: {
     paddingHorizontal: 32,
-    justifyContent: 'space-between',
+    flexGrow: 1,
+    justifyContent: 'center',
+    gap: 40,
   },
   logoArea: {
     alignItems: 'center',
     gap: 12,
   },
   logoGradient: {
-    width: 96,
-    height: 96,
-    borderRadius: 28,
+    width: 80,
+    height: 80,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#C084FC',
@@ -165,63 +257,71 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
   logoEmoji: {
-    fontSize: 48,
+    fontSize: 40,
   },
   appName: {
-    fontSize: 40,
+    fontSize: 34,
     fontWeight: '900',
     letterSpacing: -1,
-    marginTop: 4,
   },
   tagline: {
     fontSize: 15,
     textAlign: 'center',
-    lineHeight: 22,
-    maxWidth: 260,
   },
-  features: {
+  form: {
     gap: 14,
   },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  featureIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: 'center',
+  inputWrapper: {
+    position: 'relative',
     justifyContent: 'center',
   },
-  featureText: {
-    fontSize: 15,
-    fontWeight: '500',
-    lineHeight: 20,
+  inputIcon: {
+    position: 'absolute',
+    left: 16,
+    zIndex: 1,
   },
-  cta: {
-    gap: 14,
+  input: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingLeft: 44,
+    paddingRight: 16,
+    fontSize: 16,
+    backgroundColor: 'rgba(255,255,255,0.05)',
   },
-  loginBtn: {
+  errorBox: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  errorText: {
+    color: '#FF6666',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  submitBtn: {
     borderRadius: 16,
     overflow: 'hidden',
+    marginTop: 4,
   },
-  loginBtnGradient: {
-    flexDirection: 'row',
+  submitBtnGradient: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
-    gap: 10,
   },
-  loginBtnText: {
+  submitBtnText: {
     color: '#fff',
     fontSize: 17,
     fontWeight: '700',
     letterSpacing: 0.3,
   },
-  disclaimer: {
-    fontSize: 12,
+  toggleBtn: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  toggleText: {
+    fontSize: 14,
     textAlign: 'center',
-    lineHeight: 18,
   },
 });

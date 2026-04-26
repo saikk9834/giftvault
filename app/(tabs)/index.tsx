@@ -55,8 +55,8 @@ export default function VaultScreen() {
     rawGifts.map((g) => ({
       ...g,
       id: String(g.id),
-      photos: (() => { try { return JSON.parse(g.photos); } catch { return []; } })(),
-      tags: (() => { try { return JSON.parse(g.tags); } catch { return []; } })(),
+      photos: (() => { try { return JSON.parse(g.photos ?? '[]') ?? []; } catch { return []; } })(),
+      tags: (() => { try { return JSON.parse(g.tags ?? '[]') ?? []; } catch { return []; } })(),
       notes: g.notes ?? undefined,
     })),
     [rawGifts]
@@ -116,7 +116,10 @@ export default function VaultScreen() {
           onPress={() => setShowFilters(!showFilters)}
           style={({ pressed }) => [
             styles.filterBtn,
-            { backgroundColor: showFilters ? colors.primary + '22' : colors.surface, borderColor: colors.border },
+            {
+              backgroundColor: showFilters ? colors.primary + '15' : colors.surface,
+              borderColor: showFilters ? colors.primary + '40' : colors.border,
+            },
             pressed && { opacity: 0.7 },
           ]}
         >
@@ -183,15 +186,18 @@ export default function VaultScreen() {
       {/* Stats row */}
       {!showFilters && allGifts.length > 0 && (
         <View style={styles.statsRow}>
-          <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={[styles.statCard, { borderColor: colors.border }]}>
+            <LinearGradient colors={['#8B5CF615', '#8B5CF605']} style={StyleSheet.absoluteFill} />
             <Text style={[styles.statNum, { color: colors.primary }]}>{totalGifts}</Text>
             <Text style={[styles.statLabel, { color: colors.muted }]}>Total</Text>
           </View>
-          <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={[styles.statCard, { borderColor: colors.border }]}>
+            <LinearGradient colors={['#EC489915', '#EC489905']} style={StyleSheet.absoluteFill} />
             <Text style={[styles.statNum, { color: colors.secondary }]}>{thisYearGifts}</Text>
             <Text style={[styles.statLabel, { color: colors.muted }]}>This Year</Text>
           </View>
-          <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={[styles.statCard, { borderColor: colors.border }]}>
+            <LinearGradient colors={['#F59E0B15', '#F59E0B05']} style={StyleSheet.absoluteFill} />
             <Text style={[styles.statNum, { color: colors.gold }]}>
               {new Set(allGifts.map((g) => g.occasion)).size}
             </Text>
@@ -239,11 +245,11 @@ export default function VaultScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12 },
-  headerTitle: { fontSize: 32, fontWeight: '800', letterSpacing: -0.5 },
-  headerSub: { fontSize: 13, fontWeight: '400', marginTop: 2 },
-  filterBtn: { width: 42, height: 42, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  searchBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 12, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, borderWidth: 1, gap: 10 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 8, paddingBottom: 14 },
+  headerTitle: { fontSize: 34, fontWeight: '800', letterSpacing: -0.8 },
+  headerSub: { fontSize: 13, fontWeight: '500', marginTop: 3 },
+  filterBtn: { width: 44, height: 44, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  searchBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 14, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 16, borderWidth: 1, gap: 10 },
   searchInput: { flex: 1, fontSize: 15, fontWeight: '400' },
   filterPanel: { marginHorizontal: 20, marginBottom: 12, padding: 14, borderRadius: 16, borderWidth: 1 },
   filterLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 8, marginTop: 4 },
@@ -255,9 +261,9 @@ const styles = StyleSheet.create({
   sortChip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
   sortChipText: { fontSize: 12, fontWeight: '600' },
   statsRow: { flexDirection: 'row', paddingHorizontal: 20, marginBottom: 16, gap: 10 },
-  statCard: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 12, borderWidth: 1 },
-  statNum: { fontSize: 22, fontWeight: '800' },
-  statLabel: { fontSize: 11, fontWeight: '500', marginTop: 2 },
+  statCard: { flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
+  statNum: { fontSize: 24, fontWeight: '800', letterSpacing: -0.5 },
+  statLabel: { fontSize: 11, fontWeight: '600', marginTop: 2, letterSpacing: 0.2 },
   row: { paddingHorizontal: 20, justifyContent: 'space-between' },
   grid: { paddingBottom: 100 },
   fab: { position: 'absolute', bottom: 24, right: 24, borderRadius: 28, shadowColor: '#C084FC', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8 },

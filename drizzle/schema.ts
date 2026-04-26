@@ -1,6 +1,7 @@
 import {
   boolean,
   int,
+  mediumtext,
   mysqlEnum,
   mysqlTable,
   text,
@@ -19,10 +20,11 @@ export const users = mysqlTable("users", {
    * Use this for relations between tables.
    */
   id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
-  openId: varchar("openId", { length: 64 }).notNull().unique(),
+  /** Unique identifier — set to email for local auth users. */
+  openId: varchar("openId", { length: 320 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
+  passwordHash: varchar("passwordHash", { length: 255 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -39,8 +41,8 @@ export const gifts = mysqlTable("gifts", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
   title: varchar("title", { length: 255 }).notNull(),
-  /** JSON array of storage URLs — stored as JSON string */
-  photos: varchar("photos", { length: 2048 }).notNull().default("[]"),
+  /** JSON array of base64 data URIs — stored as JSON string */
+  photos: mediumtext("photos"),
   dateReceived: varchar("dateReceived", { length: 32 }).notNull(),
   occasion: mysqlEnum("occasion", [
     "birthday",
@@ -78,7 +80,7 @@ export const surprises = mysqlTable("surprises", {
   giftContent: text("giftContent").notNull(),
   giftImage: text("giftImage"),
   puzzle: text("puzzle").notNull(),
-  puzzleImage: text("puzzleImage"),
+  puzzleImage: mediumtext("puzzleImage"),
   /** Stored lowercase for case-insensitive comparison */
   answer: varchar("answer", { length: 255 }).notNull(),
   deliveryDate: timestamp("deliveryDate").notNull(),

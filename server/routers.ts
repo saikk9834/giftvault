@@ -176,6 +176,30 @@ const surprisesRouter = router({
       return { success: true, correct: true };
     }),
 
+  update: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      giftContent: z.string().min(1).optional(),
+      puzzle: z.string().min(1).optional(),
+      puzzleImage: z.string().nullable().optional(),
+      answer: z.string().min(1).optional(),
+      deliveryDate: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const surprise = await db.getSurpriseById(input.id);
+      if (!surprise) throw new Error('Surprise not found');
+      if (surprise.senderId !== ctx.user.id) throw new Error('Not authorized');
+      if (surprise.isUnlocked) throw new Error('Cannot edit an already-unlocked surprise');
+      const updateData: Record<string, unknown> = {};
+      if (input.giftContent !== undefined) updateData.giftContent = input.giftContent;
+      if (input.puzzle !== undefined) updateData.puzzle = input.puzzle;
+      if (input.puzzleImage !== undefined) updateData.puzzleImage = input.puzzleImage;
+      if (input.answer !== undefined) updateData.answer = input.answer.toLowerCase().trim();
+      if (input.deliveryDate !== undefined) updateData.deliveryDate = new Date(input.deliveryDate);
+      await db.updateSurprise(input.id, ctx.user.id, updateData);
+      return { success: true };
+    }),
+
   delete: protectedProcedure
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {

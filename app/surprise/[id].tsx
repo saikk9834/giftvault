@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,14 +11,17 @@ import {
   Dimensions,
   ScrollView,
   KeyboardAvoidingView,
+  Modal,
+  StatusBar,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { format, isPast } from 'date-fns';
+import { format, isPast, isToday } from 'date-fns';
 
+import { Image } from 'expo-image';
 import { useColors } from '@/hooks/use-colors';
 import { trpc } from '@/lib/trpc';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -111,6 +114,7 @@ export default function SurpriseDetailScreen() {
   const [blurIntensity, setBlurIntensity] = useState(80);
   const [showConfetti, setShowConfetti] = useState(false);
   const [justUnlocked, setJustUnlocked] = useState(false);
+  const [lightboxUri, setLightboxUri] = useState<string | null>(null);
 
   const numericId = id ? parseInt(id, 10) : 0;
   const utils = trpc.useUtils();
@@ -201,7 +205,7 @@ export default function SurpriseDetailScreen() {
   }
 
   const delivery = new Date(surprise.deliveryDate);
-  const available = isPast(delivery);
+  const available = isPast(delivery) || isToday(delivery);
   const isUnlocked = surprise.isUnlocked;
 
   return (
@@ -311,6 +315,16 @@ export default function SurpriseDetailScreen() {
                   {surprise.puzzle}
                 </Text>
 
+                {surprise.puzzleImage && (
+                  <Pressable onPress={() => setLightboxUri(surprise.puzzleImage!)}>
+                    <Image
+                      source={{ uri: surprise.puzzleImage }}
+                      style={styles.puzzleImage}
+                      contentFit="cover"
+                    />
+                  </Pressable>
+                )}
+
                 {attempts > 0 && (
                   <View style={[styles.hintBox, { backgroundColor: colors.warning + '22', borderColor: colors.warning + '44' }]}>
                     <Text style={[styles.hintText, { color: colors.warning }]}>
@@ -365,6 +379,15 @@ export default function SurpriseDetailScreen() {
                   ? 'Congratulations! Enjoy your surprise.'
                   : `Unlocked on ${surprise.unlockedAt ? format(new Date(surprise.unlockedAt), 'MMM d, yyyy') : 'recently'}`}
               </Text>
+              {surprise.giftImage && (
+                <Pressable onPress={() => setLightboxUri(surprise.giftImage!)} style={styles.giftImageWrapper}>
+                  <Image
+                    source={{ uri: surprise.giftImage }}
+                    style={styles.giftImage}
+                    contentFit="cover"
+                  />
+                </Pressable>
+              )}
             </View>
           )}
 
@@ -382,6 +405,32 @@ export default function SurpriseDetailScreen() {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Lightbox */}
+      <Modal
+        visible={!!lightboxUri}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setLightboxUri(null)}
+      >
+        <StatusBar hidden />
+        <View style={styles.lightboxBg}>
+          <Image
+            source={{ uri: lightboxUri ?? '' }}
+            style={StyleSheet.absoluteFill}
+            contentFit="contain"
+          />
+          <Pressable
+            onPress={() => setLightboxUri(null)}
+            style={[styles.lightboxClose, { top: insets.top + 12 }]}
+          >
+            <View style={styles.lightboxCloseBtn}>
+              <IconSymbol name="xmark" size={18} color="#fff" />
+            </View>
+          </Pressable>
+        </View>
+      </Modal>
 
       {/* Confetti overlay */}
       <ConfettiExplosion active={showConfetti} />
@@ -498,6 +547,12 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     fontWeight: '500',
   },
+  puzzleImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    marginTop: 12,
+  },
   hintBox: {
     borderRadius: 10,
     borderWidth: 1,
@@ -549,5 +604,32 @@ const styles = StyleSheet.create({
   confettiParticle: {
     position: 'absolute',
     top: 0,
+  },
+  giftImageWrapper: {
+    width: '100%',
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: 8,
+  },
+  giftImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+  },
+  lightboxBg: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  lightboxClose: {
+    position: 'absolute',
+    right: 16,
+  },
+  lightboxCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

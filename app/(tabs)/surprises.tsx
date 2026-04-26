@@ -5,13 +5,14 @@ import {
   FlatList,
   StyleSheet,
   Pressable,
+  Alert,
   Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
-import { format, formatDistanceToNow, isPast } from 'date-fns';
+import { format, formatDistanceToNow, isPast, isToday } from 'date-fns';
 
 import { ScreenContainer } from '@/components/screen-container';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -24,7 +25,7 @@ import { trpc } from '@/lib/trpc';
 function CountdownChip({ deliveryDate, isUnlocked }: { deliveryDate: string; isUnlocked: boolean }) {
   const colors = useColors();
   const delivery = new Date(deliveryDate);
-  const available = isPast(delivery);
+  const available = isPast(delivery) || isToday(delivery);
 
   if (isUnlocked) {
     return (
@@ -56,10 +57,14 @@ function CountdownChip({ deliveryDate, isUnlocked }: { deliveryDate: string; isU
 
 type SurpriseCardItem = { id: string; senderId: number; senderName: string; senderAvatar?: string | null; recipientId: number; recipientName: string; giftContent: string; giftImage?: string | null; puzzle: string; answer: string; deliveryDate: string; isUnlocked: boolean; };
 
-function SurpriseCard({ item }: { item: SurpriseCardItem }) {
+function SurpriseCard({ item, onEdit, onDelete }: {
+  item: SurpriseCardItem;
+  onEdit?: () => void;
+  onDelete?: () => void;
+}) {
   const colors = useColors();
   const delivery = new Date(item.deliveryDate);
-  const available = isPast(delivery);
+  const available = isPast(delivery) || isToday(delivery);
 
   const handlePress = () => {
     if (Platform.OS !== 'web') {
@@ -119,6 +124,30 @@ function SurpriseCard({ item }: { item: SurpriseCardItem }) {
           )}
         </View>
       </View>
+
+      {/* Sent-card actions */}
+      {(onEdit || onDelete) && (
+        <View style={[styles.cardActions, { borderTopColor: colors.border }]}>
+          {onEdit && (
+            <Pressable
+              onPress={(e) => { e.stopPropagation?.(); onEdit(); }}
+              style={[styles.cardActionBtn, { borderColor: colors.primary + '44', backgroundColor: colors.primary + '11' }]}
+            >
+              <IconSymbol name="pencil" size={13} color={colors.primary} />
+              <Text style={[styles.cardActionText, { color: colors.primary }]}>Edit</Text>
+            </Pressable>
+          )}
+          {onDelete && (
+            <Pressable
+              onPress={(e) => { e.stopPropagation?.(); onDelete(); }}
+              style={[styles.cardActionBtn, { borderColor: (colors.error ?? '#EF4444') + '44', backgroundColor: (colors.error ?? '#EF4444') + '11' }]}
+            >
+              <IconSymbol name="trash" size={13} color={colors.error ?? '#EF4444'} />
+              <Text style={[styles.cardActionText, { color: colors.error ?? '#EF4444' }]}>Delete</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -127,11 +156,27 @@ export default function SurprisesScreen() {
   const colors = useColors();
   const { user, isAuthenticated } = useAuth();
 
+  const utils = trpc.useUtils();
   const { data: rawSurprises = [], refetch } = trpc.surprises.list.useQuery(undefined, {
     enabled: isAuthenticated,
   });
+  const deleteSurprise = trpc.surprises.delete.useMutation({
+    onSuccess: () => utils.surprises.list.invalidate(),
+  });
 
   useFocusEffect(useCallback(() => { if (isAuthenticated) refetch(); }, [isAuthenticated]));
+
+  const handleDelete = (item: SurpriseCardItem) => {
+    const doDelete = () => deleteSurprise.mutate({ id: Number(item.id) });
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Delete the surprise for ${item.recipientName}? This cannot be undone.`)) doDelete();
+    } else {
+      Alert.alert('Delete Surprise', `Delete the surprise for ${item.recipientName}?`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: doDelete },
+      ]);
+    }
+  };
 
   const incoming = useMemo(() =>
     rawSurprises.filter((s) => s.recipientId === user?.id).map((s) => ({
@@ -223,7 +268,14 @@ export default function SurprisesScreen() {
                 </Pressable>
               </View>
             ) : (
-              sent.map((item) => <SurpriseCard key={item.id} item={item} />)
+              sent.map((item) => (
+                <SurpriseCard
+                  key={item.id}
+                  item={item}
+                  onEdit={item.isUnlocked ? undefined : () => router.push({ pathname: '/edit-surprise/[id]' as any, params: { id: item.id } })}
+                  onDelete={() => handleDelete(item)}
+                />
+              ))
             )}
           </View>
         }
@@ -330,6 +382,27 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 10,
     fontWeight: '700',
+  },
+  cardActions: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingBottom: 12,
+    paddingTop: 4,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  cardActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  cardActionText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   emptySection: {
     borderRadius: 16,

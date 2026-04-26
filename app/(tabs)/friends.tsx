@@ -133,7 +133,11 @@ export default function FriendsScreen() {
   const handleAddFriend = async () => {
     const query = searchInput.trim().replace('@', '');
     if (!query) {
-      Alert.alert('Enter a Username', 'Please enter a username to add.');
+      if (Platform.OS === 'web') {
+        window.alert('Please enter a username to add.');
+      } else {
+        Alert.alert('Enter a Username', 'Please enter a username to add.');
+      }
       return;
     }
     setAdding(true);
@@ -141,7 +145,11 @@ export default function FriendsScreen() {
       // Search for user by username/name
       const results = await utils.friends.search.fetch({ query });
       if (!results || results.length === 0) {
-        Alert.alert('User Not Found', `No user found for "${query}". Make sure they have a GiftVault account.`);
+        if (Platform.OS === 'web') {
+          window.alert(`No user found for "${query}". Make sure they have a GiftVault account.`);
+        } else {
+          Alert.alert('User Not Found', `No user found for "${query}". Make sure they have a GiftVault account.`);
+        }
         return;
       }
       const target = results[0];
@@ -151,9 +159,17 @@ export default function FriendsScreen() {
       }
       setSearchInput('');
       setShowAdd(false);
-      Alert.alert('Request Sent!', `Friend request sent to ${target.name ?? query}`);
+      if (Platform.OS === 'web') {
+        window.alert(`Friend request sent to ${target.name ?? query}`);
+      } else {
+        Alert.alert('Request Sent!', `Friend request sent to ${target.name ?? query}`);
+      }
     } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'Failed to send friend request.');
+      if (Platform.OS === 'web') {
+        window.alert(e?.message ?? 'Failed to send friend request.');
+      } else {
+        Alert.alert('Error', e?.message ?? 'Failed to send friend request.');
+      }
     } finally {
       setAdding(false);
     }
@@ -167,20 +183,26 @@ export default function FriendsScreen() {
   };
 
   const handleRemove = (friend: FriendRow) => {
-    Alert.alert(
-      'Remove Friend',
-      `Remove ${friend.displayName} from your friends?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            await removeFriend.mutateAsync({ friendId: friend.id });
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Remove ${friend.displayName} from your friends?`)) {
+        removeFriend.mutate({ friendId: friend.id });
+      }
+    } else {
+      Alert.alert(
+        'Remove Friend',
+        `Remove ${friend.displayName} from your friends?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Remove',
+            style: 'destructive',
+            onPress: async () => {
+              await removeFriend.mutateAsync({ friendId: friend.id });
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const accepted = friends.filter((f) => f.status === 'accepted');

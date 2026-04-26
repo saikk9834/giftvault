@@ -1,15 +1,29 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import mysql from "mysql2";
 import { InsertUser, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _db: ReturnType<typeof drizzle> | null = null;
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      const url = new URL(process.env.DATABASE_URL);
+      const isRemote = !["localhost", "127.0.0.1", "::1"].includes(url.hostname);
+      const pool = mysql.createPool({
+        host: url.hostname,
+        port: parseInt(url.port) || 3306,
+        user: decodeURIComponent(url.username),
+        password: decodeURIComponent(url.password),
+        database: url.pathname.replace(/^\//, ""),
+        ssl: isRemote ? { rejectUnauthorized: true } : undefined,
+        waitForConnections: true,
+        connectionLimit: 10,
+      });
+      _db = drizzle(pool);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -75,6 +89,24 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     console.error("[Database] Failed to upsert user:", error);
     throw error;
   }
+}
+
+export async function createLocalUser(data: {
+  name: string;
+  email: string;
+  passwordHash: string;
+}): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(users).values({
+    openId: data.email,
+    name: data.name,
+    email: data.email,
+    passwordHash: data.passwordHash,
+    loginMethod: "email",
+    lastSignedIn: new Date(),
+  });
+  return result[0].insertId as number;
 }
 
 export async function getUserByOpenId(openId: string) {
@@ -156,6 +188,14 @@ export async function unlockSurprise(id: number, userId: number) {
   if (!db) throw new Error('Database not available');
   await db.update(surprises).set({ isUnlocked: true, unlockedAt: new Date() }).where(
     and(eq(surprises.id, id), eq(surprises.recipientId, userId))
+  );
+}
+
+export async function updateSurprise(id: number, senderId: number, data: Partial<InsertSurprise>) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+  await db.update(surprises).set(data).where(
+    and(eq(surprises.id, id), eq(surprises.senderId, senderId))
   );
 }
 
@@ -253,9 +293,14 @@ export async function getUserById(id: number) {
 export async function searchUserByName(name: string, excludeUserId: number) {
   const db = await getDb();
   if (!db) return [];
-  // Simple search: find users whose name contains the query (case-insensitive handled by DB)
+  const q = name.toLowerCase().replace(/\s+/g, '');
   const allUsers = await db.select({ id: users.id, name: users.name, email: users.email }).from(users);
-  return allUsers.filter(u => u.id !== excludeUserId && u.name?.toLowerCase().includes(name.toLowerCase()));
+  return allUsers.filter((u) => {
+    if (u.id === excludeUserId) return false;
+    const nameMatch = u.name?.toLowerCase().replace(/\s+/g, '').includes(q);
+    const emailMatch = u.email?.toLowerCase().includes(q);
+    return nameMatch || emailMatch;
+  });
 }
 
 // ─── Push Tokens ─────────────────────────────────────────────────────────────

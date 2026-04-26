@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,9 @@ import {
   Alert,
   Dimensions,
   Platform,
+  Modal,
+  FlatList,
+  StatusBar,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -22,14 +25,22 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { OccasionBadge } from '@/components/ui/occasion-badge';
 import { TagChip } from '@/components/ui/tag-chip';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function GiftDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [activePhoto, setActivePhoto] = useState(0);
+  const [lightboxVisible, setLightboxVisible] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const lightboxRef = useRef<FlatList>(null);
   const utils = trpc.useUtils();
+
+  const openLightbox = (index: number) => {
+    setLightboxIndex(index);
+    setLightboxVisible(true);
+  };
 
   const numericId = id ? parseInt(id, 10) : 0;
   const { data: rawGift, isLoading } = trpc.gifts.getById.useQuery(
@@ -77,8 +88,8 @@ export default function GiftDetailScreen() {
   const gift = {
     ...rawGift,
     id: String(rawGift.id),
-    photos: (() => { try { return JSON.parse(rawGift.photos); } catch { return []; } })() as string[],
-    tags: (() => { try { return JSON.parse(rawGift.tags); } catch { return []; } })() as string[],
+    photos: (() => { try { return JSON.parse(rawGift.photos ?? '[]') ?? []; } catch { return []; } })() as string[],
+    tags: (() => { try { return JSON.parse(rawGift.tags ?? '[]') ?? []; } catch { return []; } })() as string[],
     notes: rawGift.notes ?? undefined,
   };
 
@@ -97,12 +108,14 @@ export default function GiftDetailScreen() {
         {/* Hero Image */}
         <View style={styles.heroContainer}>
           {hasPhotos ? (
-            <Image
-              source={{ uri: gift.photos[activePhoto] }}
-              style={styles.heroImage}
-              contentFit="cover"
-              transition={300}
-            />
+            <Pressable style={styles.heroImage} onPress={() => openLightbox(activePhoto)}>
+              <Image
+                source={{ uri: gift.photos[activePhoto] }}
+                style={StyleSheet.absoluteFill}
+                contentFit="cover"
+                transition={300}
+              />
+            </Pressable>
           ) : (
             <LinearGradient
               colors={['#1A1A2E', '#16213E', '#0D0D0F']}
@@ -115,6 +128,7 @@ export default function GiftDetailScreen() {
           <LinearGradient
             colors={['rgba(13,13,15,0.5)', 'transparent', 'rgba(13,13,15,0.8)']}
             style={StyleSheet.absoluteFill}
+            pointerEvents="none"
           />
           {/* Back button */}
           <Pressable
@@ -123,6 +137,15 @@ export default function GiftDetailScreen() {
           >
             <View style={[styles.iconBtn, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
               <IconSymbol name="chevron.left" size={22} color="#fff" />
+            </View>
+          </Pressable>
+          {/* Edit button */}
+          <Pressable
+            onPress={() => router.push(`/edit-gift/${gift.id}` as any)}
+            style={[styles.editBtn, { top: insets.top + 12 }]}
+          >
+            <View style={[styles.iconBtn, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+              <IconSymbol name="pencil" size={18} color="#fff" />
             </View>
           </Pressable>
           {/* Delete button */}
@@ -143,7 +166,7 @@ export default function GiftDetailScreen() {
               contentContainerStyle={styles.photoStripContent}
             >
               {gift.photos.map((uri, i) => (
-                <Pressable key={i} onPress={() => setActivePhoto(i)}>
+                <Pressable key={i} onPress={() => { setActivePhoto(i); openLightbox(i); }}>
                   <Image
                     source={{ uri }}
                     style={[
@@ -202,6 +225,63 @@ export default function GiftDetailScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      {/* Lightbox */}
+      <Modal
+        visible={lightboxVisible}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setLightboxVisible(false)}
+      >
+        <StatusBar hidden />
+        <View style={styles.lightboxBg}>
+          <FlatList
+            ref={lightboxRef}
+            data={gift.photos}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            initialScrollIndex={lightboxIndex}
+            getItemLayout={(_, index) => ({
+              length: SCREEN_WIDTH,
+              offset: SCREEN_WIDTH * index,
+              index,
+            })}
+            onMomentumScrollEnd={(e) => {
+              const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+              setLightboxIndex(index);
+            }}
+            keyExtractor={(_, i) => String(i)}
+            renderItem={({ item }) => (
+              <View style={styles.lightboxPage}>
+                <Image
+                  source={{ uri: item }}
+                  style={StyleSheet.absoluteFill}
+                  contentFit="contain"
+                />
+              </View>
+            )}
+          />
+          {/* Counter */}
+          {gift.photos.length > 1 && (
+            <View style={styles.lightboxCounter}>
+              <Text style={styles.lightboxCounterText}>
+                {lightboxIndex + 1} / {gift.photos.length}
+              </Text>
+            </View>
+          )}
+          {/* Close */}
+          <Pressable
+            onPress={() => setLightboxVisible(false)}
+            style={[styles.lightboxClose, { top: insets.top + 12 }]}
+          >
+            <View style={styles.lightboxCloseBtn}>
+              <IconSymbol name="xmark" size={18} color="#fff" />
+            </View>
+          </Pressable>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -234,6 +314,10 @@ const styles = StyleSheet.create({
   backBtn: {
     position: 'absolute',
     left: 16,
+  },
+  editBtn: {
+    position: 'absolute',
+    right: 68,
   },
   deleteBtn: {
     position: 'absolute',
@@ -322,5 +406,39 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     marginTop: 20,
+  },
+  lightboxBg: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  lightboxPage: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+  },
+  lightboxClose: {
+    position: 'absolute',
+    right: 16,
+  },
+  lightboxCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lightboxCounter: {
+    position: 'absolute',
+    bottom: 40,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  lightboxCounterText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

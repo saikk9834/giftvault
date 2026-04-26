@@ -18,16 +18,18 @@ import { Platform } from 'react-native';
 import { router } from 'expo-router';
 import { trpc } from '@/lib/trpc';
 
-// Show notifications even when the app is in the foreground
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// Show notifications even when the app is in the foreground (native only)
+if (Platform.OS !== 'web') {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 async function registerForPushNotificationsAsync(): Promise<string | null> {
   if (!Device.isDevice) {
@@ -86,7 +88,7 @@ export function usePushNotifications(isAuthenticated: boolean) {
   const registerToken = trpc.notifications.registerToken.useMutation();
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || Platform.OS === 'web') return;
 
     let mounted = true;
 

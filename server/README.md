@@ -191,7 +191,7 @@ export type InsertItem = typeof items.$inferInsert;
 After editing the schema, push changes to the database:
 
 ```bash
-pnpm db:push
+npm run db:push
 ```
 
 This runs `drizzle-kit generate` and `drizzle-kit migrate`.
@@ -624,7 +624,7 @@ describe("items", () => {
 Run tests:
 
 ```bash
-pnpm test
+npm test
 ```
 
 ---
@@ -1233,6 +1233,6 @@ const { data, fetchNextPage, hasNextPage } = trpc.items.list.useInfiniteQuery(
 |-------|----------|
 | "Database not available" | Check `DATABASE_URL` is set |
 | Auth not working | Verify OAuth callback URL matches |
-| tRPC type errors | Run `pnpm check` to verify types |
+| tRPC type errors | Run `npm run check` to verify types |
 | Mutations fail silently | Check browser console for errors |
 | Session expired | User needs to login again |

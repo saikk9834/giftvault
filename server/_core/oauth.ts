@@ -1,59 +1,19 @@
+import bcrypt from "bcryptjs";
 import { COOKIE_NAME, ONE_YEAR_MS } from "../../shared/const.js";
 import type { Express, Request, Response } from "express";
-import { getUserByOpenId, upsertUser } from "../db";
+import { createLocalUser, getUserByOpenId, upsertUser } from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
 
-function getQueryParam(req: Request, key: string): string | undefined {
-  const value = req.query[key];
-  return typeof value === "string" ? value : undefined;
-}
-
-async function syncUser(userInfo: {
-  openId?: string | null;
+function buildUserResponse(user: {
+  id?: number | null;
   name?: string | null;
   email?: string | null;
   loginMethod?: string | null;
-  platform?: string | null;
+  lastSignedIn?: Date | null;
 }) {
-  if (!userInfo.openId) {
-    throw new Error("openId missing from user info");
-  }
-
-  const lastSignedIn = new Date();
-  await upsertUser({
-    openId: userInfo.openId,
-    name: userInfo.name || null,
-    email: userInfo.email ?? null,
-    loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
-    lastSignedIn,
-  });
-  const saved = await getUserByOpenId(userInfo.openId);
-  return (
-    saved ?? {
-      openId: userInfo.openId,
-      name: userInfo.name,
-      email: userInfo.email,
-      loginMethod: userInfo.loginMethod ?? null,
-      lastSignedIn,
-    }
-  );
-}
-
-function buildUserResponse(
-  user:
-    | Awaited<ReturnType<typeof getUserByOpenId>>
-    | {
-        openId: string;
-        name?: string | null;
-        email?: string | null;
-        loginMethod?: string | null;
-        lastSignedIn?: Date | null;
-      },
-) {
   return {
-    id: (user as any)?.id ?? null,
-    openId: user?.openId ?? null,
+    id: user?.id ?? null,
     name: user?.name ?? null,
     email: user?.email ?? null,
     loginMethod: user?.loginMethod ?? null,
@@ -62,94 +22,77 @@ function buildUserResponse(
 }
 
 export function registerOAuthRoutes(app: Express) {
-  app.get("/api/oauth/callback", async (req: Request, res: Response) => {
-    const code = getQueryParam(req, "code");
-    const state = getQueryParam(req, "state");
+  app.post("/api/auth/signup", async (req: Request, res: Response) => {
+    const { name, email, password } = req.body ?? {};
 
-    if (!code || !state) {
-      res.status(400).json({ error: "code and state are required" });
+    if (!name || !email || !password) {
+      res.status(400).json({ error: "name, email, and password are required" });
+      return;
+    }
+    if (password.length < 8) {
+      res.status(400).json({ error: "Password must be at least 8 characters" });
+      return;
+    }
+
+    const existing = await getUserByOpenId(email);
+    if (existing) {
+      res.status(409).json({ error: "An account with this email already exists" });
       return;
     }
 
     try {
-      const tokenResponse = await sdk.exchangeCodeForToken(code, state);
-      const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);
-      await syncUser(userInfo);
-      const sessionToken = await sdk.createSessionToken(userInfo.openId!, {
-        name: userInfo.name || "",
+      const passwordHash = await bcrypt.hash(password, 12);
+      await createLocalUser({ name, email, passwordHash });
+      const user = await getUserByOpenId(email);
+
+      const sessionToken = await sdk.createSessionToken(email, {
+        name,
         expiresInMs: ONE_YEAR_MS,
       });
 
       const cookieOptions = getSessionCookieOptions(req);
       res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
-
-      // Redirect to the frontend URL (Expo web on port 8081)
-      // Cookie is set with parent domain so it works across both 3000 and 8081 subdomains
-      const frontendUrl =
-        process.env.EXPO_WEB_PREVIEW_URL ||
-        process.env.EXPO_PACKAGER_PROXY_URL ||
-        "http://localhost:8081";
-      res.redirect(302, frontendUrl);
+      res.json({ sessionToken, user: buildUserResponse(user!) });
     } catch (error) {
-      console.error("[OAuth] Callback failed", error);
-      res.status(500).json({ error: "OAuth callback failed" });
+      console.error("[Auth] Signup failed:", error);
+      res.status(500).json({ error: "Signup failed" });
     }
   });
 
-  app.get("/api/oauth/mobile", async (req: Request, res: Response) => {
-    const code = getQueryParam(req, "code");
-    const state = getQueryParam(req, "state");
+  app.post("/api/auth/signin", async (req: Request, res: Response) => {
+    const { email, password } = req.body ?? {};
 
-    if (!code || !state) {
-      res.status(400).json({ error: "code and state are required" });
+    if (!email || !password) {
+      res.status(400).json({ error: "email and password are required" });
       return;
     }
 
-    // Decode the state to extract native flag and deep link scheme.
-    // New format: base64(JSON { redirectUri, native, scheme })
-    // Legacy format: base64(redirectUri string)
-    let isNative = false;
-    let deepLinkScheme = "manus";
-    try {
-      const decoded = Buffer.from(state, "base64").toString("utf-8");
-      const parsed = JSON.parse(decoded);
-      if (parsed && typeof parsed.redirectUri === "string") {
-        isNative = parsed.native === true;
-        deepLinkScheme = parsed.scheme || "manus";
-      }
-    } catch {
-      // Legacy state format — not native
+    const user = await getUserByOpenId(email);
+    if (!user?.passwordHash) {
+      res.status(401).json({ error: "Invalid email or password" });
+      return;
+    }
+
+    const valid = await bcrypt.compare(password, user.passwordHash);
+    if (!valid) {
+      res.status(401).json({ error: "Invalid email or password" });
+      return;
     }
 
     try {
-      const tokenResponse = await sdk.exchangeCodeForToken(code, state);
-      const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);
-      const user = await syncUser(userInfo);
+      await upsertUser({ openId: email, lastSignedIn: new Date() });
 
-      const sessionToken = await sdk.createSessionToken(userInfo.openId!, {
-        name: userInfo.name || "",
+      const sessionToken = await sdk.createSessionToken(email, {
+        name: user.name || "",
         expiresInMs: ONE_YEAR_MS,
       });
 
       const cookieOptions = getSessionCookieOptions(req);
       res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
-
-      if (isNative) {
-        // Redirect back to the app via deep link, carrying the session token and user info
-        const userJson = Buffer.from(JSON.stringify(buildUserResponse(user))).toString("base64");
-        const deepLinkUrl = `${deepLinkScheme}://oauth/callback?sessionToken=${encodeURIComponent(sessionToken)}&user=${encodeURIComponent(userJson)}`;
-        console.log("[OAuth] Redirecting to app deep link:", deepLinkScheme + "://oauth/callback");
-        res.redirect(302, deepLinkUrl);
-      } else {
-        // Web or legacy JSON response
-        res.json({
-          app_session_id: sessionToken,
-          user: buildUserResponse(user),
-        });
-      }
+      res.json({ sessionToken, user: buildUserResponse(user) });
     } catch (error) {
-      console.error("[OAuth] Mobile exchange failed", error);
-      res.status(500).json({ error: "OAuth mobile exchange failed" });
+      console.error("[Auth] Signin failed:", error);
+      res.status(500).json({ error: "Signin failed" });
     }
   });
 
@@ -159,41 +102,12 @@ export function registerOAuthRoutes(app: Express) {
     res.json({ success: true });
   });
 
-  // Get current authenticated user - works with both cookie (web) and Bearer token (mobile)
   app.get("/api/auth/me", async (req: Request, res: Response) => {
     try {
       const user = await sdk.authenticateRequest(req);
       res.json({ user: buildUserResponse(user) });
-    } catch (error) {
-      console.error("[Auth] /api/auth/me failed:", error);
+    } catch {
       res.status(401).json({ error: "Not authenticated", user: null });
-    }
-  });
-
-  // Establish session cookie from Bearer token
-  // Used by iframe preview: frontend receives token via postMessage, then calls this endpoint
-  // to get a proper Set-Cookie response from the backend (3000-xxx domain)
-  app.post("/api/auth/session", async (req: Request, res: Response) => {
-    try {
-      // Authenticate using Bearer token from Authorization header
-      const user = await sdk.authenticateRequest(req);
-
-      // Get the token from the Authorization header to set as cookie
-      const authHeader = req.headers.authorization || req.headers.Authorization;
-      if (typeof authHeader !== "string" || !authHeader.startsWith("Bearer ")) {
-        res.status(400).json({ error: "Bearer token required" });
-        return;
-      }
-      const token = authHeader.slice("Bearer ".length).trim();
-
-      // Set cookie for this domain (3000-xxx)
-      const cookieOptions = getSessionCookieOptions(req);
-      res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: ONE_YEAR_MS });
-
-      res.json({ success: true, user: buildUserResponse(user) });
-    } catch (error) {
-      console.error("[Auth] /api/auth/session failed:", error);
-      res.status(401).json({ error: "Invalid token" });
     }
   });
 }

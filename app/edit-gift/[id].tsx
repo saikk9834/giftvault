@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,13 +9,16 @@ import {
   Alert,
   Platform,
   KeyboardAvoidingView,
+  Modal,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
-import { router } from 'expo-router';
+import * as FileSystem from 'expo-file-system/legacy';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
+import { format } from 'date-fns';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { useColors } from '@/hooks/use-colors';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -23,25 +26,70 @@ import { GradientButton } from '@/components/ui/gradient-button';
 import { TagChip } from '@/components/ui/tag-chip';
 import { Occasion, OCCASIONS } from '@/lib/types';
 import { trpc } from '@/lib/trpc';
-import * as FileSystem from 'expo-file-system/legacy';
 
-export default function AddGiftScreen() {
+async function encodeUri(uri: string): Promise<string> {
+  if (uri.startsWith('data:')) return uri;
+  if (Platform.OS === 'web') {
+    const resp = await fetch(uri);
+    const blob = await resp.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+  return `data:image/jpeg;base64,${base64}`;
+}
+
+export default function EditGiftScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const numericId = id ? parseInt(id, 10) : 0;
+  const utils = trpc.useUtils();
+
+  const { data: rawGift, isLoading } = trpc.gifts.getById.useQuery(
+    { id: numericId },
+    { enabled: !!id && !isNaN(numericId) }
+  );
 
   const [title, setTitle] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
-  const [dateReceived, setDateReceived] = useState(
-    new Date().toISOString().split('T')[0]
-  );
-  const [occasion, setOccasion] = useState<Occasion>('birthday');
+  const [dateReceived, setDateReceived] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [occasion, setOccasion] = useState<Occasion>('other');
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
-  const utils = trpc.useUtils();
-  const createGift = trpc.gifts.create.useMutation({
-    onSuccess: () => utils.gifts.list.invalidate(),
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (rawGift && !loaded) {
+      setTitle(rawGift.title);
+      const parsedPhotos: string[] = (() => {
+        try { return JSON.parse(rawGift.photos ?? '[]') ?? []; } catch { return []; }
+      })();
+      setPhotos(parsedPhotos);
+      const parsedTags: string[] = (() => {
+        try { return JSON.parse(rawGift.tags ?? '[]') ?? []; } catch { return []; }
+      })();
+      setTags(parsedTags);
+      setNotes(rawGift.notes ?? '');
+      setOccasion((rawGift.occasion as Occasion) ?? 'other');
+      const d = new Date(rawGift.dateReceived);
+      setDateReceived(isNaN(d.getTime()) ? new Date() : d);
+      setLoaded(true);
+    }
+  }, [rawGift, loaded]);
+
+  const updateGift = trpc.gifts.update.useMutation({
+    onSuccess: () => {
+      utils.gifts.list.invalidate();
+      utils.gifts.getById.invalidate({ id: numericId });
+    },
   });
 
   const pickPhoto = async () => {
@@ -57,15 +105,9 @@ export default function AddGiftScreen() {
     }
   };
 
-  const removePhoto = (uri: string) => {
-    setPhotos((prev) => prev.filter((p) => p !== uri));
-  };
-
   const addTag = () => {
     const tag = tagInput.trim().toLowerCase().replace(/\s+/g, '-');
-    if (tag && !tags.includes(tag)) {
-      setTags((prev) => [...prev, tag]);
-    }
+    if (tag && !tags.includes(tag)) setTags((prev) => [...prev, tag]);
     setTagInput('');
   };
 
@@ -76,51 +118,38 @@ export default function AddGiftScreen() {
     }
     setSaving(true);
     try {
-      // Convert each photo URI to a base64 data URI for storage
-      const dataUris: string[] = [];
+      const encodedPhotos: string[] = [];
       for (const uri of photos) {
-        try {
-          let dataUri: string;
-          if (Platform.OS === 'web') {
-            const resp = await fetch(uri);
-            const blob = await resp.blob();
-            dataUri = await new Promise<string>((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = () => resolve(reader.result as string);
-              reader.onerror = reject;
-              reader.readAsDataURL(blob);
-            });
-          } else {
-            const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
-            dataUri = `data:image/jpeg;base64,${base64}`;
-          }
-          dataUris.push(dataUri);
-        } catch {
-          // skip photos that fail to read
-        }
+        try { encodedPhotos.push(await encodeUri(uri)); } catch {}
       }
-      await createGift.mutateAsync({
+      await updateGift.mutateAsync({
+        id: numericId,
         title: title.trim(),
-        photos: dataUris,
-        dateReceived,
+        photos: encodedPhotos,
+        dateReceived: format(dateReceived, 'yyyy-MM-dd'),
         occasion,
         tags,
-        notes: notes.trim() || undefined,
+        notes: notes.trim() || null,
       });
       if (Platform.OS !== 'web') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
       router.back();
     } catch (e: any) {
-      if (e?.data?.code === 'UNAUTHORIZED') {
-        router.push('/login' as any);
-        return;
-      }
-      Alert.alert('Error', 'Failed to save gift. Please try again.');
+      if (e?.data?.code === 'UNAUTHORIZED') { router.push('/login' as any); return; }
+      Alert.alert('Error', 'Failed to save changes. Please try again.');
     } finally {
       setSaving(false);
     }
   };
+
+  if (isLoading || !rawGift) {
+    return (
+      <View style={[styles.loading, { backgroundColor: colors.background }]}>
+        <Text style={[{ color: colors.muted, fontSize: 16 }]}>{isLoading ? 'Loading...' : 'Gift not found'}</Text>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -132,7 +161,7 @@ export default function AddGiftScreen() {
         <Pressable onPress={() => router.back()} hitSlop={8}>
           <IconSymbol name="xmark" size={22} color={colors.muted} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Add Gift</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Edit Gift</Text>
         <View style={{ width: 22 }} />
       </View>
 
@@ -141,14 +170,14 @@ export default function AddGiftScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Photo picker */}
+        {/* Photos */}
         <Text style={[styles.label, { color: colors.muted }]}>Photos</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoRow}>
-          {photos.map((uri) => (
-            <View key={uri} style={styles.photoWrapper}>
+          {photos.map((uri, i) => (
+            <View key={i} style={styles.photoWrapper}>
               <Image source={{ uri }} style={styles.photo} contentFit="cover" />
               <Pressable
-                onPress={() => removePhoto(uri)}
+                onPress={() => setPhotos((prev) => prev.filter((_, idx) => idx !== i))}
                 style={[styles.removePhoto, { backgroundColor: colors.error }]}
               >
                 <IconSymbol name="xmark" size={12} color="#fff" />
@@ -177,17 +206,65 @@ export default function AddGiftScreen() {
           returnKeyType="next"
         />
 
-        {/* Date */}
+        {/* Date Received */}
         <Text style={[styles.label, { color: colors.muted }]}>Date Received</Text>
-        <TextInput
-          value={dateReceived}
-          onChangeText={setDateReceived}
-          placeholder="YYYY-MM-DD"
-          placeholderTextColor={colors.muted}
-          style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
-          returnKeyType="next"
-          keyboardType="numbers-and-punctuation"
-        />
+        {Platform.OS === 'web' ? (
+          <TextInput
+            value={format(dateReceived, 'yyyy-MM-dd')}
+            onChangeText={(v) => { const d = new Date(v); if (!isNaN(d.getTime())) setDateReceived(d); }}
+            placeholder="YYYY-MM-DD"
+            placeholderTextColor={colors.muted}
+            style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
+            returnKeyType="next"
+            keyboardType="numbers-and-punctuation"
+          />
+        ) : (
+          <>
+            <Pressable
+              onPress={() => setShowDatePicker(true)}
+              style={[styles.datePicker, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            >
+              <IconSymbol name="calendar" size={18} color={colors.primary} />
+              <Text style={[styles.datePickerText, { color: colors.foreground }]}>
+                {format(dateReceived, 'MMMM d, yyyy')}
+              </Text>
+              <IconSymbol name="chevron.right" size={14} color={colors.muted} />
+            </Pressable>
+
+            {Platform.OS === 'android' && showDatePicker && (
+              <DateTimePicker
+                value={dateReceived}
+                mode="date"
+                maximumDate={new Date()}
+                onChange={(_, date) => {
+                  setShowDatePicker(false);
+                  if (date) setDateReceived(date);
+                }}
+              />
+            )}
+
+            {Platform.OS === 'ios' && (
+              <Modal visible={showDatePicker} transparent animationType="slide">
+                <Pressable style={styles.dateModalBackdrop} onPress={() => setShowDatePicker(false)} />
+                <View style={[styles.dateModalSheet, { backgroundColor: colors.surface }]}>
+                  <View style={[styles.dateModalHeader, { borderBottomColor: colors.border }]}>
+                    <Pressable onPress={() => setShowDatePicker(false)}>
+                      <Text style={[styles.dateModalDone, { color: colors.primary }]}>Done</Text>
+                    </Pressable>
+                  </View>
+                  <DateTimePicker
+                    value={dateReceived}
+                    mode="date"
+                    display="spinner"
+                    maximumDate={new Date()}
+                    onChange={(_, date) => { if (date) setDateReceived(date); }}
+                    style={{ height: 200 }}
+                  />
+                </View>
+              </Modal>
+            )}
+          </>
+        )}
 
         {/* Occasion */}
         <Text style={[styles.label, { color: colors.muted }]}>Occasion</Text>
@@ -250,21 +327,15 @@ export default function AddGiftScreen() {
           onChangeText={setNotes}
           placeholder="Any special memories or details..."
           placeholderTextColor={colors.muted}
-          style={[
-            styles.input,
-            styles.notesInput,
-            { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground },
-          ]}
+          style={[styles.input, styles.notesInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
           multiline
           numberOfLines={4}
           textAlignVertical="top"
-          returnKeyType="done"
         />
 
-        {/* Save button */}
         <View style={styles.saveBtn}>
           <GradientButton
-            title={saving ? 'Saving...' : 'Add to Vault'}
+            title={saving ? 'Saving...' : 'Save Changes'}
             onPress={handleSave}
             loading={saving}
             size="lg"
@@ -276,9 +347,8 @@ export default function AddGiftScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -287,13 +357,8 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
     borderBottomWidth: 1,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  scroll: {
-    padding: 20,
-  },
+  headerTitle: { fontSize: 18, fontWeight: '700' },
+  scroll: { padding: 20 },
   label: {
     fontSize: 12,
     fontWeight: '700',
@@ -302,18 +367,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginTop: 16,
   },
-  photoRow: {
-    marginBottom: 4,
-  },
-  photoWrapper: {
-    position: 'relative',
-    marginRight: 10,
-  },
-  photo: {
-    width: 90,
-    height: 90,
-    borderRadius: 12,
-  },
+  photoRow: { marginBottom: 4 },
+  photoWrapper: { position: 'relative', marginRight: 10 },
+  photo: { width: 90, height: 90, borderRadius: 12 },
   removePhoto: {
     position: 'absolute',
     top: -6,
@@ -334,25 +390,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 4,
   },
-  addPhotoText: {
-    fontSize: 10,
-    fontWeight: '600',
-  },
+  addPhotoText: { fontSize: 10, fontWeight: '600' },
   input: {
     borderRadius: 12,
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    fontWeight: '400',
   },
-  notesInput: {
-    height: 100,
-    paddingTop: 12,
+  notesInput: { height: 100, paddingTop: 12 },
+  datePicker: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
   },
-  occasionRow: {
-    marginBottom: 4,
+  datePickerText: { flex: 1, fontSize: 15, fontWeight: '500' },
+  dateModalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
+  dateModalSheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 32 },
+  dateModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
   },
+  dateModalDone: { fontSize: 16, fontWeight: '700' },
+  occasionRow: { marginBottom: 4 },
   occasionChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -363,18 +430,9 @@ const styles = StyleSheet.create({
     marginRight: 8,
     gap: 5,
   },
-  occasionEmoji: {
-    fontSize: 16,
-  },
-  occasionLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  tagInputRow: {
-    flexDirection: 'row',
-    gap: 10,
-    alignItems: 'center',
-  },
+  occasionEmoji: { fontSize: 16 },
+  occasionLabel: { fontSize: 13, fontWeight: '600' },
+  tagInputRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
   tagInput: {
     flex: 1,
     borderRadius: 12,
@@ -391,12 +449,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tagsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 10,
-  },
-  saveBtn: {
-    marginTop: 32,
-  },
+  tagsRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 10 },
+  saveBtn: { marginTop: 32 },
 });

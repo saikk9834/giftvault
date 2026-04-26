@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, Text, StyleSheet, ActivityIndicator, Platform } from 'react-native';
+import { Pressable, Text, StyleSheet, ActivityIndicator, Platform, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 
@@ -14,9 +14,15 @@ interface GradientButtonProps {
 }
 
 const GRADIENTS = {
-  primary: ['#C084FC', '#F472B6'] as const,
-  secondary: ['#F472B6', '#C084FC'] as const,
-  gold: ['#F59E0B', '#FCD34D', '#F59E0B'] as const,
+  primary:   ['#8B5CF6', '#EC4899'] as const,
+  secondary: ['#EC4899', '#8B5CF6'] as const,
+  gold:      ['#F59E0B', '#FCD34D', '#F59E0B'] as const,
+};
+
+const SHADOW_COLORS = {
+  primary: '#8B5CF6',
+  secondary: '#EC4899',
+  gold: '#F59E0B',
 };
 
 export function GradientButton({
@@ -29,39 +35,50 @@ export function GradientButton({
   fullWidth = true,
 }: GradientButtonProps) {
   const handlePress = () => {
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onPress();
   };
 
-  const paddingV = size === 'sm' ? 10 : size === 'lg' ? 18 : 14;
-  const fontSize = size === 'sm' ? 13 : size === 'lg' ? 18 : 15;
+  const paddingV = size === 'sm' ? 11 : size === 'lg' ? 18 : 14;
+  const fontSize = size === 'sm' ? 13 : size === 'lg' ? 17 : 15;
 
   return (
-    <Pressable
-      onPress={handlePress}
-      disabled={disabled || loading}
-      style={({ pressed }) => [
-        styles.pressable,
+    <View
+      style={[
         fullWidth && styles.fullWidth,
-        (disabled || loading) && styles.disabled,
-        pressed && styles.pressed,
+        !disabled && !loading && {
+          shadowColor: SHADOW_COLORS[variant],
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.35,
+          shadowRadius: 12,
+          elevation: 6,
+        },
       ]}
     >
-      <LinearGradient
-        colors={disabled ? ['#4B4B6B', '#3A3A5C'] : GRADIENTS[variant]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={[styles.gradient, { paddingVertical: paddingV }]}
+      <Pressable
+        onPress={handlePress}
+        disabled={disabled || loading}
+        style={({ pressed }) => [
+          styles.pressable,
+          fullWidth && styles.fullWidth,
+          (disabled || loading) && styles.disabled,
+          pressed && styles.pressed,
+        ]}
       >
-        {loading ? (
-          <ActivityIndicator color="#fff" size="small" />
-        ) : (
-          <Text style={[styles.text, { fontSize }]}>{title}</Text>
-        )}
-      </LinearGradient>
-    </Pressable>
+        <LinearGradient
+          colors={disabled ? ['#9CA3AF', '#6B7280'] : GRADIENTS[variant]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[styles.gradient, { paddingVertical: paddingV }]}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={[styles.text, { fontSize }]}>{title}</Text>
+          )}
+        </LinearGradient>
+      </Pressable>
+    </View>
   );
 }
 
@@ -74,11 +91,11 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   disabled: {
-    opacity: 0.6,
+    opacity: 0.55,
   },
   pressed: {
     transform: [{ scale: 0.97 }],
-    opacity: 0.9,
+    opacity: 0.88,
   },
   gradient: {
     alignItems: 'center',
@@ -89,6 +106,6 @@ const styles = StyleSheet.create({
   text: {
     color: '#fff',
     fontWeight: '700',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
 });

@@ -20,9 +20,9 @@ export function TagChip({ label, onRemove, active = false, onPress, size = 'md' 
       style={({ pressed }) => [
         styles.chip,
         {
-          backgroundColor: active ? colors.primary + '33' : colors.surface2,
-          borderColor: active ? colors.primary : colors.border,
-          paddingHorizontal: isSmall ? 8 : 12,
+          backgroundColor: active ? colors.primary + '18' : colors.surface2,
+          borderColor: active ? colors.primary + '60' : colors.border,
+          paddingHorizontal: isSmall ? 9 : 12,
           paddingVertical: isSmall ? 4 : 6,
         },
         pressed && onPress && { opacity: 0.7 },
@@ -34,13 +34,14 @@ export function TagChip({ label, onRemove, active = false, onPress, size = 'md' 
           {
             color: active ? colors.primary : colors.muted,
             fontSize: isSmall ? 11 : 13,
+            fontWeight: active ? '700' : '600',
           },
         ]}
       >
         #{label}
       </Text>
       {onRemove && (
-        <Pressable onPress={onRemove} style={styles.removeBtn} hitSlop={8}>
+        <Pressable onPress={onRemove} hitSlop={10} style={styles.removeBtn}>
           <Text style={[styles.removeIcon, { color: colors.muted }]}>×</Text>
         </Pressable>
       )}
@@ -58,14 +59,14 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   label: {
-    fontWeight: '500',
+    letterSpacing: 0.1,
   },
   removeBtn: {
-    marginLeft: 4,
+    marginLeft: 5,
   },
   removeIcon: {
     fontSize: 16,
     lineHeight: 18,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });

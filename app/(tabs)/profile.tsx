@@ -103,26 +103,31 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await logout();
-            if (Platform.OS !== 'web') {
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            }
-            // Navigate to login screen after sign out
-            router.replace('/login' as any);
-          } catch (err) {
-            console.error('[Profile] Logout error:', err);
-            Alert.alert('Error', 'Failed to sign out. Please try again.');
-          }
-        },
-      },
-    ]);
+    const doLogout = async () => {
+      try {
+        await logout();
+        if (Platform.OS !== 'web') {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+        router.replace('/login' as any);
+      } catch (err) {
+        console.error('[Profile] Logout error:', err);
+        if (Platform.OS === 'web') {
+          window.alert('Failed to sign out. Please try again.');
+        } else {
+          Alert.alert('Error', 'Failed to sign out. Please try again.');
+        }
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('Are you sure you want to sign out?')) doLogout();
+    } else {
+      Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign Out', style: 'destructive', onPress: doLogout },
+      ]);
+    }
   };
 
   if (!isAuthenticated) {
@@ -144,11 +149,13 @@ export default function ProfileScreen() {
       >
         {/* Profile hero */}
         <LinearGradient
-          colors={['#1A1A2E', '#16213E']}
+          colors={['#4C1D95', '#6D28D9', '#9333EA']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
           style={styles.hero}
         >
           <LinearGradient
-            colors={['#C084FC22', '#F472B622']}
+            colors={['#FFFFFF08', '#FFFFFF00']}
             style={StyleSheet.absoluteFill}
           />
           <Avatar name={displayName} size={80} />
@@ -168,11 +175,11 @@ export default function ProfileScreen() {
             </View>
           ) : (
             <Pressable onPress={() => setEditingName(true)} style={styles.nameRow}>
-              <Text style={[styles.displayName, { color: colors.foreground }]}>{displayName}</Text>
-              <IconSymbol name="pencil" size={14} color={colors.muted} />
+              <Text style={[styles.displayName, { color: '#fff' }]}>{displayName}</Text>
+              <IconSymbol name="pencil" size={14} color="rgba(255,255,255,0.6)" />
             </Pressable>
           )}
-          <Text style={[styles.username, { color: colors.muted }]}>@{username}</Text>
+          <Text style={[styles.username, { color: 'rgba(255,255,255,0.65)' }]}>@{username}</Text>
         </LinearGradient>
 
         {/* Stats */}
@@ -238,21 +245,6 @@ export default function ProfileScreen() {
           </Text>
         </View>
 
-        {/* Firebase schema note */}
-        <View style={[styles.schemaCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <LinearGradient
-            colors={['#C084FC', '#F472B6']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.schemaAccent}
-          />
-          <View style={styles.schemaContent}>
-            <Text style={[styles.schemaTitle, { color: colors.foreground }]}>🔥 Firebase Ready</Text>
-            <Text style={[styles.schemaSub, { color: colors.muted }]}>
-              GiftVault is architected for Firebase. Connect Auth, Firestore, Storage, and Cloud Messaging to enable cross-device sync, real-time surprises, and push notifications.
-            </Text>
-          </View>
-        </View>
       </ScrollView>
     </ScreenContainer>
   );
@@ -262,7 +254,7 @@ const styles = StyleSheet.create({
   scroll: { paddingBottom: 100 },
   hero: {
     alignItems: 'center',
-    paddingVertical: 36,
+    paddingVertical: 44,
     paddingHorizontal: 20,
     gap: 8,
     overflow: 'hidden',
