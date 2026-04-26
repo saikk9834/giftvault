@@ -2,16 +2,13 @@ import "@/global.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
 import { Platform } from "react-native";
 import { useFonts } from "expo-font";
-import * as SplashScreen from "expo-splash-screen";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ThemeProvider } from "@/lib/theme-provider";
-
-SplashScreen.preventAutoHideAsync();
 import {
   SafeAreaFrameContext,
   SafeAreaInsetsContext,
@@ -41,11 +38,10 @@ export default function RootLayout() {
   const insets = initialWindowMetrics?.insets ?? DEFAULT_WEB_INSETS;
   const frame = initialWindowMetrics?.frame ?? DEFAULT_WEB_FRAME;
 
-  const [fontsLoaded] = useFonts(MaterialIcons.font);
-
-  useEffect(() => {
-    if (fontsLoaded) SplashScreen.hideAsync();
-  }, [fontsLoaded]);
+  // Kick off font loading — don't block rendering on it.
+  // Expo Router manages the splash screen; blocking here (return null) causes
+  // the app to freeze if the font load stalls for any reason.
+  useFonts(MaterialIcons.font);
 
   const [queryClient] = useState(
     () =>
@@ -72,13 +68,10 @@ export default function RootLayout() {
     };
   }, [insets, frame]);
 
-  if (!fontsLoaded) return null;
-
   const content = (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
-          {/* in order for ios apps tab switching to work properly, use presentation: "fullScreenModal" for login page, whenever you decide to use presentation: "modal*/}
           <PushNotificationBootstrap />
           <Stack
             screenOptions={{
@@ -101,24 +94,15 @@ export default function RootLayout() {
             />
             <Stack.Screen
               name="add-gift"
-              options={{
-                presentation: "modal",
-                animation: "slide_from_bottom",
-              }}
+              options={{ presentation: "modal", animation: "slide_from_bottom" }}
             />
             <Stack.Screen
               name="send-surprise"
-              options={{
-                presentation: "modal",
-                animation: "slide_from_bottom",
-              }}
+              options={{ presentation: "modal", animation: "slide_from_bottom" }}
             />
             <Stack.Screen
               name="edit-surprise/[id]"
-              options={{
-                presentation: "modal",
-                animation: "slide_from_bottom",
-              }}
+              options={{ presentation: "modal", animation: "slide_from_bottom" }}
             />
           </Stack>
           <StatusBar style="light" />
@@ -127,9 +111,7 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 
-  const shouldOverrideSafeArea = Platform.OS === "web";
-
-  if (shouldOverrideSafeArea) {
+  if (Platform.OS === "web") {
     return (
       <ThemeProvider>
         <SafeAreaProvider initialMetrics={providerInitialMetrics}>
