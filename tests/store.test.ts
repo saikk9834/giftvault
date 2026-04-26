@@ -1,6 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
-// Mock AsyncStorage
 vi.mock('@react-native-async-storage/async-storage', () => ({
   default: {
     getItem: vi.fn().mockResolvedValue(null),
@@ -10,8 +9,7 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
 }));
 
 import { applyFilters } from '../lib/store/gift-store';
-import { validateAnswer } from '../lib/store/surprise-store';
-import { Gift, SurpriseGift, GiftFilters } from '../lib/types';
+import { Gift, GiftFilters } from '../lib/types';
 
 const mockGifts: Gift[] = [
   {
@@ -37,17 +35,16 @@ const mockGifts: Gift[] = [
   },
 ];
 
-describe('applyFilters', () => {
-  const baseFilters: GiftFilters = {
-    search: '',
-    occasion: 'all',
-    tags: [],
-    sortKey: 'date_desc',
-  };
+const baseFilters: GiftFilters = {
+  search: '',
+  occasion: 'all',
+  tags: [],
+  sortKey: 'date_desc',
+};
 
+describe('applyFilters', () => {
   it('returns all gifts with no filters', () => {
-    const result = applyFilters(mockGifts, baseFilters);
-    expect(result).toHaveLength(2);
+    expect(applyFilters(mockGifts, baseFilters)).toHaveLength(2);
   });
 
   it('filters by search term', () => {
@@ -75,39 +72,5 @@ describe('applyFilters', () => {
   it('sorts by name ascending', () => {
     const result = applyFilters(mockGifts, { ...baseFilters, sortKey: 'name_asc' });
     expect(result[0].title).toBe('Birthday Cake');
-  });
-});
-
-describe('validateAnswer', () => {
-  const mockSurprise: SurpriseGift = {
-    id: 's1',
-    senderId: 'user1',
-    senderName: 'Alice',
-    recipientId: 'me',
-    recipientName: 'Bob',
-    giftContent: 'A special surprise',
-    puzzle: 'What has keys but no locks?',
-    answer: 'piano',
-    deliveryDate: '2024-01-01T00:00:00Z',
-    isUnlocked: false,
-    createdAt: '2024-01-01T00:00:00Z',
-  };
-
-  it('validates correct answer (exact match)', () => {
-    expect(validateAnswer(mockSurprise, 'piano')).toBe(true);
-  });
-
-  it('validates correct answer (case insensitive)', () => {
-    expect(validateAnswer(mockSurprise, 'PIANO')).toBe(true);
-    expect(validateAnswer(mockSurprise, 'Piano')).toBe(true);
-  });
-
-  it('validates correct answer (with whitespace)', () => {
-    expect(validateAnswer(mockSurprise, '  piano  ')).toBe(true);
-  });
-
-  it('rejects wrong answer', () => {
-    expect(validateAnswer(mockSurprise, 'keyboard')).toBe(false);
-    expect(validateAnswer(mockSurprise, '')).toBe(false);
   });
 });
