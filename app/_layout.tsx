@@ -8,6 +8,7 @@ import "react-native-reanimated";
 import { Platform } from "react-native";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ThemeProvider } from "@/lib/theme-provider";
 import {
   SafeAreaFrameContext,
@@ -21,7 +22,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 
 // Must be called before any rendering — keep at module level, after all imports.
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
 const DEFAULT_WEB_FRAME: Rect = { x: 0, y: 0, width: 0, height: 0 };
@@ -38,18 +39,22 @@ export default function RootLayout() {
   const insets = initialWindowMetrics?.insets ?? DEFAULT_WEB_INSETS;
   const frame = initialWindowMetrics?.frame ?? DEFAULT_WEB_FRAME;
 
-  // require() tells Metro to bundle the font asset into the APK.
-  // The expo-font plugin in app.config.ts also embeds it as a native asset.
-  // Key must be 'material' — that is the fontName used internally by @expo/vector-icons/MaterialIcons.
-  // Using any other key (e.g. 'MaterialIcons') leaves Font.isLoaded('material') returning false
-  // and every icon renders as an empty <Text />.
-  const [fontsLoaded] = useFonts({
-    material: require("@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialIcons.ttf"),
-  });
+  // MaterialIcons.font is { material: <ttf asset> } — the canonical, library-
+  // provided config. The icon component checks Font.isLoaded('material') before
+  // rendering; using any other key (e.g. 'MaterialIcons') leaves it false and
+  // every icon renders as an empty <Text />.
+  const [fontsLoaded] = useFonts(MaterialIcons.font);
 
+  // Hide splash as soon as fonts load (fast path).
   useEffect(() => {
-    if (fontsLoaded) SplashScreen.hideAsync();
+    if (fontsLoaded) SplashScreen.hideAsync().catch(() => {});
   }, [fontsLoaded]);
+
+  // Safety net: never let the app hang on splash. Hide after 2s no matter what.
+  useEffect(() => {
+    const t = setTimeout(() => SplashScreen.hideAsync().catch(() => {}), 2000);
+    return () => clearTimeout(t);
+  }, []);
 
   const [queryClient] = useState(
     () =>
@@ -73,7 +78,9 @@ export default function RootLayout() {
     };
   }, [insets, frame]);
 
-  if (!fontsLoaded) return null;
+  // Do NOT block on fontsLoaded. If the font fails (or is slow), icons render
+  // briefly as empty text but the app always opens. Splash hides via the
+  // safety effect above. Blocking caused prior splash-screen deadlocks.
 
   const content = (
     <GestureHandlerRootView style={{ flex: 1 }}>
