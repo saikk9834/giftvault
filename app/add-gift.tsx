@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,35 +9,34 @@ import {
   Alert,
   Platform,
   KeyboardAvoidingView,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as ImagePicker from 'expo-image-picker';
-import { router } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Haptics from 'expo-haptics';
+} from "react-native";
+import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
+import { router } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Haptics from "expo-haptics";
 
-import { useColors } from '@/hooks/use-colors';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { GradientButton } from '@/components/ui/gradient-button';
-import { TagChip } from '@/components/ui/tag-chip';
-import { Occasion, OCCASIONS } from '@/lib/types';
-import { trpc } from '@/lib/trpc';
-import * as FileSystem from 'expo-file-system/legacy';
+import { useColors } from "@/hooks/use-colors";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { GradientButton } from "@/components/ui/gradient-button";
+import { TagChip } from "@/components/ui/tag-chip";
+import { Occasion, OCCASIONS } from "@/lib/types";
+import { trpc } from "@/lib/trpc";
+import * as FileSystem from "expo-file-system/legacy";
 
 export default function AddGiftScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
 
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
   const [dateReceived, setDateReceived] = useState(
-    new Date().toISOString().split('T')[0]
+    new Date().toISOString().split("T")[0],
   );
-  const [occasion, setOccasion] = useState<Occasion>('birthday');
-  const [tagInput, setTagInput] = useState('');
+  const [occasion, setOccasion] = useState<Occasion>("birthday");
+  const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState<string[]>([]);
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const utils = trpc.useUtils();
   const createGift = trpc.gifts.create.useMutation({
@@ -46,7 +45,7 @@ export default function AddGiftScreen() {
 
   const pickPhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
+      mediaTypes: ["images"],
       allowsMultipleSelection: true,
       quality: 0.8,
       selectionLimit: 5 - photos.length,
@@ -62,16 +61,16 @@ export default function AddGiftScreen() {
   };
 
   const addTag = () => {
-    const tag = tagInput.trim().toLowerCase().replace(/\s+/g, '-');
+    const tag = tagInput.trim().toLowerCase().replace(/\s+/g, "-");
     if (tag && !tags.includes(tag)) {
       setTags((prev) => [...prev, tag]);
     }
-    setTagInput('');
+    setTagInput("");
   };
 
   const handleSave = async () => {
     if (!title.trim()) {
-      Alert.alert('Missing Title', 'Please enter a name for this gift.');
+      Alert.alert("Missing Title", "Please enter a name for this gift.");
       return;
     }
     setSaving(true);
@@ -81,7 +80,7 @@ export default function AddGiftScreen() {
       for (const uri of photos) {
         try {
           let dataUri: string;
-          if (Platform.OS === 'web') {
+          if (Platform.OS === "web") {
             const resp = await fetch(uri);
             const blob = await resp.blob();
             dataUri = await new Promise<string>((resolve, reject) => {
@@ -91,7 +90,9 @@ export default function AddGiftScreen() {
               reader.readAsDataURL(blob);
             });
           } else {
-            const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+            const base64 = await FileSystem.readAsStringAsync(uri, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
             dataUri = `data:image/jpeg;base64,${base64}`;
           }
           dataUris.push(dataUri);
@@ -107,16 +108,16 @@ export default function AddGiftScreen() {
         tags,
         notes: notes.trim() || undefined,
       });
-      if (Platform.OS !== 'web') {
+      if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
       router.back();
     } catch (e: any) {
-      if (e?.data?.code === 'UNAUTHORIZED') {
-        router.push('/login' as any);
+      if (e?.data?.code === "UNAUTHORIZED") {
+        router.push("/login" as any);
         return;
       }
-      Alert.alert('Error', 'Failed to save gift. Please try again.');
+      Alert.alert("Error", "Failed to save gift. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -125,25 +126,39 @@ export default function AddGiftScreen() {
   return (
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: colors.border }]}>
+      <View
+        style={[
+          styles.header,
+          { paddingTop: insets.top + 8, borderBottomColor: colors.border },
+        ]}
+      >
         <Pressable onPress={() => router.back()} hitSlop={8}>
           <IconSymbol name="xmark" size={22} color={colors.muted} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Add Gift</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>
+          Add Gift
+        </Text>
         <View style={{ width: 22 }} />
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 20 }]}
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingBottom: insets.bottom + 20 },
+        ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         {/* Photo picker */}
         <Text style={[styles.label, { color: colors.muted }]}>Photos</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.photoRow}
+        >
           {photos.map((uri) => (
             <View key={uri} style={styles.photoWrapper}>
               <Image source={{ uri }} style={styles.photo} contentFit="cover" />
@@ -158,10 +173,15 @@ export default function AddGiftScreen() {
           {photos.length < 5 && (
             <Pressable
               onPress={pickPhoto}
-              style={[styles.addPhoto, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              style={[
+                styles.addPhoto,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
             >
               <IconSymbol name="camera.fill" size={24} color={colors.muted} />
-              <Text style={[styles.addPhotoText, { color: colors.muted }]}>Add Photo</Text>
+              <Text style={[styles.addPhotoText, { color: colors.muted }]}>
+                Add Photo
+              </Text>
             </Pressable>
           )}
         </ScrollView>
@@ -173,25 +193,45 @@ export default function AddGiftScreen() {
           onChangeText={setTitle}
           placeholder="e.g. Rose Gold Watch"
           placeholderTextColor={colors.muted}
-          style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              color: colors.foreground,
+            },
+          ]}
           returnKeyType="next"
         />
 
         {/* Date */}
-        <Text style={[styles.label, { color: colors.muted }]}>Date Received</Text>
+        <Text style={[styles.label, { color: colors.muted }]}>
+          Date Received
+        </Text>
         <TextInput
           value={dateReceived}
           onChangeText={setDateReceived}
           placeholder="YYYY-MM-DD"
           placeholderTextColor={colors.muted}
-          style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              color: colors.foreground,
+            },
+          ]}
           returnKeyType="next"
           keyboardType="numbers-and-punctuation"
         />
 
         {/* Occasion */}
         <Text style={[styles.label, { color: colors.muted }]}>Occasion</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.occasionRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.occasionRow}
+        >
           {OCCASIONS.map((occ) => (
             <Pressable
               key={occ.value}
@@ -199,13 +239,25 @@ export default function AddGiftScreen() {
               style={[
                 styles.occasionChip,
                 {
-                  backgroundColor: occasion === occ.value ? colors.primary + '33' : colors.surface,
-                  borderColor: occasion === occ.value ? colors.primary : colors.border,
+                  backgroundColor:
+                    occasion === occ.value
+                      ? colors.primary + "33"
+                      : colors.surface,
+                  borderColor:
+                    occasion === occ.value ? colors.primary : colors.border,
                 },
               ]}
             >
               <Text style={styles.occasionEmoji}>{occ.emoji}</Text>
-              <Text style={[styles.occasionLabel, { color: occasion === occ.value ? colors.primary : colors.muted }]}>
+              <Text
+                style={[
+                  styles.occasionLabel,
+                  {
+                    color:
+                      occasion === occ.value ? colors.primary : colors.muted,
+                  },
+                ]}
+              >
                 {occ.label}
               </Text>
             </Pressable>
@@ -220,13 +272,26 @@ export default function AddGiftScreen() {
             onChangeText={setTagInput}
             placeholder="Add a tag..."
             placeholderTextColor={colors.muted}
-            style={[styles.tagInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
+            style={[
+              styles.tagInput,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                color: colors.foreground,
+              },
+            ]}
             onSubmitEditing={addTag}
             returnKeyType="done"
           />
           <Pressable
             onPress={addTag}
-            style={[styles.tagAddBtn, { backgroundColor: colors.primary + '22', borderColor: colors.primary }]}
+            style={[
+              styles.tagAddBtn,
+              {
+                backgroundColor: colors.primary + "22",
+                borderColor: colors.primary,
+              },
+            ]}
           >
             <IconSymbol name="plus" size={18} color={colors.primary} />
           </Pressable>
@@ -237,14 +302,18 @@ export default function AddGiftScreen() {
               <TagChip
                 key={tag}
                 label={tag}
-                onRemove={() => setTags((prev) => prev.filter((t) => t !== tag))}
+                onRemove={() =>
+                  setTags((prev) => prev.filter((t) => t !== tag))
+                }
               />
             ))}
           </View>
         )}
 
         {/* Notes */}
-        <Text style={[styles.label, { color: colors.muted }]}>Notes (optional)</Text>
+        <Text style={[styles.label, { color: colors.muted }]}>
+          Notes (optional)
+        </Text>
         <TextInput
           value={notes}
           onChangeText={setNotes}
@@ -253,7 +322,11 @@ export default function AddGiftScreen() {
           style={[
             styles.input,
             styles.notesInput,
-            { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground },
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              color: colors.foreground,
+            },
           ]}
           multiline
           numberOfLines={4}
@@ -264,7 +337,7 @@ export default function AddGiftScreen() {
         {/* Save button */}
         <View style={styles.saveBtn}>
           <GradientButton
-            title={saving ? 'Saving...' : 'Add to Vault'}
+            title={saving ? "Saving..." : "Add to Vault"}
             onPress={handleSave}
             loading={saving}
             size="lg"
@@ -280,25 +353,25 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingBottom: 14,
     borderBottomWidth: 1,
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   scroll: {
     padding: 20,
   },
   label: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: 0.8,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     marginBottom: 10,
     marginTop: 16,
   },
@@ -306,7 +379,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   photoWrapper: {
-    position: 'relative',
+    position: "relative",
     marginRight: 10,
   },
   photo: {
@@ -315,28 +388,28 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   removePhoto: {
-    position: 'absolute',
+    position: "absolute",
     top: -6,
     right: -6,
     width: 22,
     height: 22,
     borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   addPhoto: {
     width: 90,
     height: 90,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 4,
   },
   addPhotoText: {
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   input: {
     borderRadius: 12,
@@ -344,7 +417,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    fontWeight: '400',
+    fontWeight: "400",
   },
   notesInput: {
     height: 100,
@@ -354,8 +427,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   occasionChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
@@ -368,12 +441,12 @@ const styles = StyleSheet.create({
   },
   occasionLabel: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   tagInputRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
   tagInput: {
     flex: 1,
@@ -388,12 +461,12 @@ const styles = StyleSheet.create({
     height: 46,
     borderRadius: 12,
     borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   tagsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     marginTop: 10,
   },
   saveBtn: {

@@ -93,6 +93,14 @@ const config: ExpoConfig = {
   plugins: [
     "expo-router",
     [
+      "expo-font",
+      {
+        fonts: [
+          "node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialIcons.ttf",
+        ],
+      },
+    ],
+    [
       "expo-audio",
       {
         microphonePermission:
