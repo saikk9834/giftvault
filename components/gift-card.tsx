@@ -9,21 +9,21 @@ import { format } from 'date-fns';
 import { Gift } from '@/lib/types';
 import { OccasionBadge } from '@/components/ui/occasion-badge';
 import { useColors } from '@/hooks/use-colors';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const CARD_WIDTH = (Dimensions.get('window').width - 52) / 2;
+const CARD_HEIGHT = CARD_WIDTH * 1.35;
 
-const PLACEHOLDER_GRADIENTS: Record<string, [string, string]> = {
-  birthday:   ['#EC4899', '#F472B6'],
-  anniversary:['#8B5CF6', '#C084FC'],
-  christmas:  ['#EF4444', '#F97316'],
-  wedding:    ['#F59E0B', '#FCD34D'],
-  graduation: ['#3B82F6', '#60A5FA'],
-  valentines: ['#F43F5E', '#FB7185'],
-  mothers_day:['#EC4899', '#F9A8D4'],
-  fathers_day:['#6366F1', '#818CF8'],
+const PLACEHOLDER_GRADIENTS: Record<string, readonly [string, string]> = {
+  birthday:    ['#EC4899', '#F472B6'],
+  anniversary: ['#8B5CF6', '#A78BFA'],
+  christmas:   ['#EF4444', '#F97316'],
+  wedding:     ['#F59E0B', '#FCD34D'],
+  graduation:  ['#3B82F6', '#60A5FA'],
+  valentines:  ['#F43F5E', '#FB7185'],
+  mothers_day: ['#EC4899', '#F9A8D4'],
+  fathers_day: ['#6366F1', '#818CF8'],
   hanukkah:   ['#3B82F6', '#93C5FD'],
-  other:      ['#8B5CF6', '#F472B6'],
+  other:       ['#8B5CF6', '#EC4899'],
 };
 
 interface GiftCardProps {
@@ -31,9 +31,8 @@ interface GiftCardProps {
   index?: number;
 }
 
-export function GiftCard({ gift, index = 0 }: GiftCardProps) {
+export function GiftCard({ gift }: GiftCardProps) {
   const colors = useColors();
-  const scheme = useColorScheme() ?? 'dark';
   const hasPhoto = gift.photos.length > 0;
   const [c1, c2] = PLACEHOLDER_GRADIENTS[gift.occasion] ?? PLACEHOLDER_GRADIENTS.other;
 
@@ -53,52 +52,48 @@ export function GiftCard({ gift, index = 0 }: GiftCardProps) {
       style={({ pressed }) => [
         styles.card,
         {
-          backgroundColor: colors.surface,
-          borderColor: colors.border,
           width: CARD_WIDTH,
-          ...(scheme === 'light' && {
-            shadowColor: '#6D28D9',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.1,
-            shadowRadius: 12,
-            elevation: 4,
-          }),
+          height: CARD_HEIGHT,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.18,
+          shadowRadius: 16,
+          elevation: 8,
         },
         pressed && styles.pressed,
       ]}
     >
-      {/* Image area */}
-      <View style={styles.imageContainer}>
-        {hasPhoto ? (
-          <Image source={{ uri: gift.photos[0] }} style={styles.image} contentFit="cover" transition={200} />
-        ) : (
-          <LinearGradient colors={[c1, c2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.image}>
+      {/* Full-bleed photo or gradient */}
+      {hasPhoto ? (
+        <Image source={{ uri: gift.photos[0] }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+      ) : (
+        <LinearGradient colors={[c1, c2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill}>
+          <View style={styles.placeholderInner}>
             <Text style={styles.placeholderEmoji}>🎁</Text>
-          </LinearGradient>
-        )}
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.45)']}
-          style={styles.imageGradient}
-        />
-        <View style={styles.badgeOverlay}>
-          <OccasionBadge occasion={gift.occasion} size="sm" />
-        </View>
+          </View>
+        </LinearGradient>
+      )}
+
+      {/* Dark gradient overlay at bottom */}
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0.72)']}
+        locations={[0, 0.45, 1]}
+        style={styles.overlay}
+      />
+
+      {/* Badge top-right */}
+      <View style={styles.badge}>
+        <OccasionBadge occasion={gift.occasion} size="sm" />
       </View>
 
-      {/* Info */}
+      {/* Info at bottom */}
       <View style={styles.info}>
-        <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={2}>
-          {gift.title}
-        </Text>
-        <Text style={[styles.date, { color: colors.muted }]}>{formattedDate}</Text>
+        <Text style={styles.title} numberOfLines={2}>{gift.title}</Text>
+        <Text style={styles.date}>{formattedDate}</Text>
         {gift.tags.length > 0 && (
-          <View style={styles.tagsRow}>
-            {gift.tags.slice(0, 2).map((tag) => (
-              <View key={tag} style={[styles.tagPill, { backgroundColor: colors.surface2, borderColor: colors.border }]}>
-                <Text style={[styles.tagText, { color: colors.primary }]}>#{tag}</Text>
-              </View>
-            ))}
-          </View>
+          <Text style={styles.tags} numberOfLines={1}>
+            #{gift.tags.slice(0, 2).join(' #')}
+          </Text>
         )}
       </View>
     </Pressable>
@@ -108,67 +103,54 @@ export function GiftCard({ gift, index = 0 }: GiftCardProps) {
 const styles = StyleSheet.create({
   card: {
     borderRadius: 20,
-    borderWidth: 1,
     overflow: 'hidden',
     marginBottom: 14,
-  },
-  pressed: {
-    transform: [{ scale: 0.96 }],
-    opacity: 0.92,
-  },
-  imageContainer: {
-    height: 155,
     position: 'relative',
   },
-  image: {
-    width: '100%',
-    height: '100%',
+  pressed: {
+    transform: [{ scale: 0.955 }],
+    opacity: 0.92,
+  },
+  placeholderInner: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   placeholderEmoji: {
-    fontSize: 38,
+    fontSize: 44,
   },
-  imageGradient: {
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  badge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+  },
+  info: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 60,
-  },
-  badgeOverlay: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-  },
-  info: {
     padding: 12,
-    gap: 4,
+    gap: 2,
   },
   title: {
     fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 19,
+    fontWeight: '800',
+    color: '#fff',
+    lineHeight: 18,
     letterSpacing: -0.1,
   },
   date: {
     fontSize: 11,
+    color: 'rgba(255,255,255,0.72)',
     fontWeight: '500',
   },
-  tagsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-    marginTop: 2,
-  },
-  tagPill: {
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  tagText: {
+  tags: {
     fontSize: 10,
+    color: 'rgba(255,255,255,0.6)',
     fontWeight: '600',
+    marginTop: 1,
   },
 });

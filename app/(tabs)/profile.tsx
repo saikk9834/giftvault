@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -11,61 +11,48 @@ import {
   Switch,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 
 import { ScreenContainer } from '@/components/screen-container';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Avatar } from '@/components/ui/avatar';
-import { GradientButton } from '@/components/ui/gradient-button';
 import { useColors } from '@/hooks/use-colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/use-auth';
 import { trpc } from '@/lib/trpc';
 
-interface StatCardProps {
-  value: number | string;
-  label: string;
-  color: string;
-}
-
-function StatCard({ value, label, color }: StatCardProps) {
-  const colors = useColors();
-  return (
-    <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-      <Text style={[styles.statValue, { color }]}>{value}</Text>
-      <Text style={[styles.statLabel, { color: colors.muted }]}>{label}</Text>
-    </View>
-  );
-}
-
-function SettingsRow({ icon, label, value, onPress, rightElement }: {
+function SettingsRow({ icon, label, value, onPress, rightElement, iconBg, iconColor }: {
   icon: string;
   label: string;
   value?: string;
   onPress?: () => void;
   rightElement?: React.ReactNode;
+  iconBg?: string;
+  iconColor?: string;
 }) {
   const colors = useColors();
+  const bg = iconBg ?? colors.primary + '20';
+  const ic = iconColor ?? colors.primary;
+
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.settingsRow,
         { backgroundColor: colors.surface, borderColor: colors.border },
-        pressed && onPress && { opacity: 0.7 },
+        pressed && onPress && { opacity: 0.72 },
       ]}
     >
-      <View style={[styles.settingsIcon, { backgroundColor: colors.primary + '22' }]}>
-        <IconSymbol name={icon as any} size={18} color={colors.primary} />
+      <View style={[styles.settingsIcon, { backgroundColor: bg }]}>
+        <IconSymbol name={icon as any} size={17} color={ic} />
       </View>
       <Text style={[styles.settingsLabel, { color: colors.foreground }]}>{label}</Text>
       <View style={styles.settingsRight}>
         {value && <Text style={[styles.settingsValue, { color: colors.muted }]}>{value}</Text>}
         {rightElement}
         {onPress && !rightElement && (
-          <IconSymbol name="chevron.right" size={16} color={colors.muted} />
+          <IconSymbol name="chevron.right" size={15} color={colors.muted} />
         )}
       </View>
     </Pressable>
@@ -95,28 +82,19 @@ export default function ProfileScreen() {
   const username = user?.email?.split('@')[0] ?? 'user';
 
   const handleSaveName = async () => {
-    // Name update would require a server endpoint; for now just close edit mode
     setEditingName(false);
-    if (Platform.OS !== 'web') {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
+    if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
   const handleLogout = () => {
     const doLogout = async () => {
       try {
         await logout();
-        if (Platform.OS !== 'web') {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        }
+        if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         router.replace('/login' as any);
-      } catch (err) {
-        console.error('[Profile] Logout error:', err);
-        if (Platform.OS === 'web') {
-          window.alert('Failed to sign out. Please try again.');
-        } else {
-          Alert.alert('Error', 'Failed to sign out. Please try again.');
-        }
+      } catch {
+        if (Platform.OS === 'web') window.alert('Failed to sign out. Please try again.');
+        else Alert.alert('Error', 'Failed to sign out. Please try again.');
       }
     };
 
@@ -134,19 +112,21 @@ export default function ProfileScreen() {
     return (
       <ScreenContainer>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-          <Text style={{ color: colors.foreground, fontSize: 20, fontWeight: '700', marginBottom: 8 }}>Sign in to GiftVault</Text>
-          <Text style={{ color: colors.muted, textAlign: 'center', marginBottom: 24 }}>Create an account to sync your gifts and send surprises to friends.</Text>
+          <Text style={{ color: colors.foreground, fontSize: 20, fontWeight: '700', marginBottom: 8 }}>
+            Sign in to GiftVault
+          </Text>
+          <Text style={{ color: colors.muted, textAlign: 'center', marginBottom: 24 }}>
+            Create an account to sync your gifts and send surprises to friends.
+          </Text>
         </View>
       </ScreenContainer>
     );
   }
 
   return (
-    <ScreenContainer containerClassName="bg-background">
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}
-      >
+    <ScreenContainer>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+
         {/* Profile hero */}
         <LinearGradient
           colors={['#4C1D95', '#6D28D9', '#9333EA']}
@@ -154,75 +134,112 @@ export default function ProfileScreen() {
           end={{ x: 1, y: 1 }}
           style={styles.hero}
         >
-          <LinearGradient
-            colors={['#FFFFFF08', '#FFFFFF00']}
-            style={StyleSheet.absoluteFill}
-          />
-          <Avatar name={displayName} size={80} />
-          {editingName ? (
-            <View style={styles.nameEditRow}>
-              <TextInput
-                value={newName}
-                onChangeText={setNewName}
-                style={[styles.nameInput, { color: colors.foreground, borderColor: colors.primary }]}
-                autoFocus
-                returnKeyType="done"
-                onSubmitEditing={handleSaveName}
-              />
-              <Pressable onPress={handleSaveName} style={[styles.saveNameBtn, { backgroundColor: colors.primary }]}>
-                <IconSymbol name="checkmark" size={16} color="#fff" />
+          {/* Orb decorations */}
+          <View style={styles.heroOrb1} />
+          <View style={styles.heroOrb2} />
+
+          {/* Avatar + name */}
+          <View style={styles.heroTop}>
+            <Avatar name={displayName} size={76} />
+            {editingName ? (
+              <View style={styles.nameEditRow}>
+                <TextInput
+                  value={newName}
+                  onChangeText={setNewName}
+                  style={styles.nameInput}
+                  autoFocus
+                  returnKeyType="done"
+                  onSubmitEditing={handleSaveName}
+                  placeholderTextColor="rgba(255,255,255,0.5)"
+                />
+                <Pressable onPress={handleSaveName} style={styles.saveNameBtn}>
+                  <IconSymbol name="checkmark" size={16} color="#fff" />
+                </Pressable>
+              </View>
+            ) : (
+              <Pressable onPress={() => setEditingName(true)} style={styles.nameRow}>
+                <Text style={styles.displayName}>{displayName}</Text>
+                <IconSymbol name="pencil" size={13} color="rgba(255,255,255,0.55)" />
               </Pressable>
+            )}
+            <Text style={styles.username}>@{username}</Text>
+          </View>
+
+          {/* Stats inside hero */}
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNum}>{stats.gifts}</Text>
+              <Text style={styles.statLabel}>Gifts</Text>
             </View>
-          ) : (
-            <Pressable onPress={() => setEditingName(true)} style={styles.nameRow}>
-              <Text style={[styles.displayName, { color: '#fff' }]}>{displayName}</Text>
-              <IconSymbol name="pencil" size={14} color="rgba(255,255,255,0.6)" />
-            </Pressable>
-          )}
-          <Text style={[styles.username, { color: 'rgba(255,255,255,0.65)' }]}>@{username}</Text>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statNum}>{stats.surprisesSent}</Text>
+              <Text style={styles.statLabel}>Sent</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statNum}>{stats.surprisesReceived}</Text>
+              <Text style={styles.statLabel}>Received</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statNum}>{stats.friends}</Text>
+              <Text style={styles.statLabel}>Friends</Text>
+            </View>
+          </View>
         </LinearGradient>
 
-        {/* Stats */}
-        <View style={styles.statsGrid}>
-          <StatCard value={stats.gifts} label="Gifts" color={colors.primary} />
-          <StatCard value={stats.surprisesReceived} label="Received" color={colors.secondary} />
-          <StatCard value={stats.surprisesSent} label="Sent" color={colors.gold} />
-          <StatCard value={stats.friends} label="Friends" color={colors.success} />
-        </View>
-
-        {/* Settings */}
+        {/* Preferences */}
         <Text style={[styles.sectionTitle, { color: colors.muted }]}>Preferences</Text>
-        <View style={styles.settingsGroup}>
+        <View style={[styles.settingsGroup, { shadowColor: colors.foreground }]}>
           <SettingsRow
             icon="bell.fill"
             label="Notifications"
+            iconBg="#8B5CF620"
+            iconColor="#8B5CF6"
             rightElement={
               <Switch
                 value={true}
                 onValueChange={() => {}}
-                trackColor={{ true: colors.primary, false: colors.border }}
+                trackColor={{ true: '#8B5CF6', false: colors.border }}
                 thumbColor="#fff"
               />
             }
           />
+          <View style={[styles.rowDivider, { backgroundColor: colors.border }]} />
           <SettingsRow
-            icon="gear"
+            icon="moon.fill"
             label="Dark Mode"
+            iconBg="#6366F120"
+            iconColor="#6366F1"
             value={colorScheme === 'dark' ? 'On' : 'Off'}
           />
         </View>
 
+        {/* About */}
         <Text style={[styles.sectionTitle, { color: colors.muted }]}>About</Text>
-        <View style={styles.settingsGroup}>
-          <SettingsRow icon="info.circle" label="Version" value="1.0.0" />
+        <View style={[styles.settingsGroup, { shadowColor: colors.foreground }]}>
+          <SettingsRow
+            icon="info.circle"
+            label="Version"
+            iconBg="#0EA5E920"
+            iconColor="#0EA5E9"
+            value="1.0.0"
+          />
+          <View style={[styles.rowDivider, { backgroundColor: colors.border }]} />
           <SettingsRow
             icon="star.fill"
             label="Rate GiftVault"
+            iconBg="#F59E0B20"
+            iconColor="#F59E0B"
             onPress={() => Alert.alert('Thank you!', 'Your feedback means the world to us. 💜')}
           />
+          <View style={[styles.rowDivider, { backgroundColor: colors.border }]} />
           <SettingsRow
             icon="square.and.arrow.up"
             label="Share App"
+            iconBg="#22C55E20"
+            iconColor="#22C55E"
             onPress={() => Alert.alert('Share', 'giftvault.app — Share the love!')}
           />
         </View>
@@ -233,12 +250,16 @@ export default function ProfileScreen() {
             onPress={handleLogout}
             style={({ pressed }) => [
               styles.signOutBtn,
-              { borderColor: colors.error + '55', backgroundColor: colors.error + '11' },
               pressed && { opacity: 0.7, transform: [{ scale: 0.98 }] },
             ]}
           >
-            <IconSymbol name="rectangle.portrait.and.arrow.right" size={18} color={colors.error} />
-            <Text style={[styles.signOutText, { color: colors.error }]}>Sign Out</Text>
+            <LinearGradient
+              colors={['#EF444411', '#EF444418']}
+              style={styles.signOutGradient}
+            >
+              <IconSymbol name="rectangle.portrait.and.arrow.right" size={18} color="#EF4444" />
+              <Text style={styles.signOutText}>Sign Out</Text>
+            </LinearGradient>
           </Pressable>
           <Text style={[styles.signOutHint, { color: colors.muted }]}>
             Signed in as {user?.email ?? user?.name ?? 'you'}
@@ -251,80 +272,123 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingBottom: 100 },
+  scroll: { paddingBottom: 120 },
+
   hero: {
-    alignItems: 'center',
-    paddingVertical: 44,
+    paddingTop: 40,
+    paddingBottom: 24,
     paddingHorizontal: 20,
-    gap: 8,
     overflow: 'hidden',
+    gap: 0,
+  },
+  heroOrb1: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    top: -70,
+    right: -50,
+  },
+  heroOrb2: {
+    position: 'absolute',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    bottom: -30,
+    left: 30,
+  },
+  heroTop: {
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 20,
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: 8,
+    marginTop: 4,
   },
-  displayName: { fontSize: 24, fontWeight: '800' },
-  username: { fontSize: 14, fontWeight: '500' },
+  displayName: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.3,
+  },
+  username: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.6)',
+  },
   nameEditRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 8,
+    marginTop: 4,
   },
   nameInput: {
     borderBottomWidth: 2,
+    borderBottomColor: 'rgba(255,255,255,0.6)',
     fontSize: 22,
     fontWeight: '700',
     paddingVertical: 4,
     paddingHorizontal: 8,
     minWidth: 160,
     textAlign: 'center',
+    color: '#fff',
   },
   saveNameBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  statsGrid: {
+
+  statsRow: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    gap: 10,
-  },
-  statCard: {
-    flex: 1,
-    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 16,
     paddingVertical: 12,
-    borderRadius: 14,
-    borderWidth: 1,
+    paddingHorizontal: 6,
+    alignItems: 'center',
   },
-  statValue: { fontSize: 22, fontWeight: '800' },
-  statLabel: { fontSize: 10, fontWeight: '600', marginTop: 2, letterSpacing: 0.3 },
+  statItem: { flex: 1, alignItems: 'center' },
+  statNum: { fontSize: 20, fontWeight: '800', color: '#fff', letterSpacing: -0.5 },
+  statLabel: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.65)',
+    fontWeight: '600',
+    marginTop: 2,
+    letterSpacing: 0.2,
+  },
+  statDivider: { width: 1, height: 26, backgroundColor: 'rgba(255,255,255,0.2)' },
+
   sectionTitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     letterSpacing: 1,
     textTransform: 'uppercase',
     paddingHorizontal: 20,
     marginBottom: 10,
-    marginTop: 8,
+    marginTop: 20,
   },
   settingsGroup: {
-    marginHorizontal: 20,
-    marginBottom: 16,
-    borderRadius: 16,
+    marginHorizontal: 16,
+    borderRadius: 18,
     overflow: 'hidden',
-    gap: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   settingsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 14,
-    borderWidth: 1,
+    borderWidth: 0,
     gap: 12,
   },
   settingsIcon: {
@@ -337,34 +401,28 @@ const styles = StyleSheet.create({
   settingsLabel: { flex: 1, fontSize: 15, fontWeight: '500' },
   settingsRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   settingsValue: { fontSize: 14 },
-  schemaCard: {
-    marginHorizontal: 20,
-    marginTop: 8,
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  schemaAccent: { height: 3 },
-  schemaContent: { padding: 16, gap: 6 },
-  schemaTitle: { fontSize: 15, fontWeight: '700' },
-  schemaSub: { fontSize: 13, lineHeight: 20 },
+  rowDivider: { height: StyleSheet.hairlineWidth, marginLeft: 60 },
+
   signOutSection: {
-    marginHorizontal: 20,
-    marginTop: 8,
-    marginBottom: 4,
-    gap: 10,
+    marginHorizontal: 16,
+    marginTop: 20,
+    gap: 12,
     alignItems: 'center',
   },
   signOutBtn: {
+    width: '100%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#EF444433',
+  },
+  signOutGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    width: '100%',
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1,
+    paddingVertical: 15,
   },
-  signOutText: { fontSize: 16, fontWeight: '700' },
+  signOutText: { fontSize: 16, fontWeight: '700', color: '#EF4444' },
   signOutHint: { fontSize: 12 },
 });
