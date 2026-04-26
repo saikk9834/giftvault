@@ -40,8 +40,11 @@ export default function RootLayout() {
 
   // require() tells Metro to bundle the font asset into the APK.
   // The expo-font plugin in app.config.ts also embeds it as a native asset.
+  // Key must be 'material' — that is the fontName used internally by @expo/vector-icons/MaterialIcons.
+  // Using any other key (e.g. 'MaterialIcons') leaves Font.isLoaded('material') returning false
+  // and every icon renders as an empty <Text />.
   const [fontsLoaded] = useFonts({
-    MaterialIcons: require("@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialIcons.ttf"),
+    material: require("@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialIcons.ttf"),
   });
 
   useEffect(() => {
