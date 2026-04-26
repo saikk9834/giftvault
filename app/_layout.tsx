@@ -2,11 +2,16 @@ import "@/global.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
 import { Platform } from "react-native";
+import { useFonts } from "expo-font";
+import * as SplashScreen from "expo-splash-screen";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ThemeProvider } from "@/lib/theme-provider";
+
+SplashScreen.preventAutoHideAsync();
 import {
   SafeAreaFrameContext,
   SafeAreaInsetsContext,
@@ -36,6 +41,12 @@ export default function RootLayout() {
   const insets = initialWindowMetrics?.insets ?? DEFAULT_WEB_INSETS;
   const frame = initialWindowMetrics?.frame ?? DEFAULT_WEB_FRAME;
 
+  const [fontsLoaded] = useFonts(MaterialIcons.font);
+
+  useEffect(() => {
+    if (fontsLoaded) SplashScreen.hideAsync();
+  }, [fontsLoaded]);
+
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -60,6 +71,8 @@ export default function RootLayout() {
       },
     };
   }, [insets, frame]);
+
+  if (!fontsLoaded) return null;
 
   const content = (
     <GestureHandlerRootView style={{ flex: 1 }}>

@@ -8,7 +8,6 @@ import { format } from 'date-fns';
 
 import { Gift } from '@/lib/types';
 import { OccasionBadge } from '@/components/ui/occasion-badge';
-import { useColors } from '@/hooks/use-colors';
 
 const CARD_WIDTH = (Dimensions.get('window').width - 52) / 2;
 const CARD_HEIGHT = CARD_WIDTH * 1.35;
@@ -22,17 +21,15 @@ const PLACEHOLDER_GRADIENTS: Record<string, readonly [string, string]> = {
   valentines:  ['#F43F5E', '#FB7185'],
   mothers_day: ['#EC4899', '#F9A8D4'],
   fathers_day: ['#6366F1', '#818CF8'],
-  hanukkah:   ['#3B82F6', '#93C5FD'],
+  hanukkah:    ['#3B82F6', '#93C5FD'],
   other:       ['#8B5CF6', '#EC4899'],
 };
 
 interface GiftCardProps {
   gift: Gift;
-  index?: number;
 }
 
 export function GiftCard({ gift }: GiftCardProps) {
-  const colors = useColors();
   const hasPhoto = gift.photos.length > 0;
   const [c1, c2] = PLACEHOLDER_GRADIENTS[gift.occasion] ?? PLACEHOLDER_GRADIENTS.other;
 
@@ -47,57 +44,71 @@ export function GiftCard({ gift }: GiftCardProps) {
   })();
 
   return (
+    // Outer Pressable: owns shadow — must NOT have overflow:hidden on Android
     <Pressable
       onPress={handlePress}
       style={({ pressed }) => [
-        styles.cardShadow,
+        styles.shadow,
         { width: CARD_WIDTH },
         pressed && styles.pressed,
       ]}
     >
-      <View style={[styles.card, { height: CARD_HEIGHT }]}>
-      {/* Full-bleed photo or gradient */}
-      {hasPhoto ? (
-        <Image source={{ uri: gift.photos[0] }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
-      ) : (
-        <LinearGradient colors={[c1, c2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill}>
+      {/*
+        LinearGradient IS the card container — avoids Android rendering bug where
+        LinearGradient with absoluteFill inside overflow:hidden doesn't paint.
+      */}
+      <LinearGradient
+        colors={[c1, c2]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.card, { height: CARD_HEIGHT }]}
+      >
+        {/* Photo overlays the gradient when present */}
+        {hasPhoto && (
+          <Image
+            source={{ uri: gift.photos[0] }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            transition={200}
+          />
+        )}
+
+        {/* Emoji placeholder when no photo */}
+        {!hasPhoto && (
           <View style={styles.placeholderInner}>
             <Text style={styles.placeholderEmoji}>🎁</Text>
           </View>
-        </LinearGradient>
-      )}
-
-      {/* Dark gradient overlay at bottom */}
-      <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0.72)']}
-        locations={[0, 0.45, 1]}
-        style={styles.overlay}
-      />
-
-      {/* Badge top-right */}
-      <View style={styles.badge}>
-        <OccasionBadge occasion={gift.occasion} size="sm" />
-      </View>
-
-      {/* Info at bottom */}
-      <View style={styles.info}>
-        <Text style={styles.title} numberOfLines={2}>{gift.title}</Text>
-        <Text style={styles.date}>{formattedDate}</Text>
-        {gift.tags.length > 0 && (
-          <Text style={styles.tags} numberOfLines={1}>
-            #{gift.tags.slice(0, 2).join(' #')}
-          </Text>
         )}
-      </View>
-      </View>
+
+        {/* Dark gradient overlay at bottom */}
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0.75)']}
+          locations={[0, 0.45, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+
+        {/* Occasion badge — top right */}
+        <View style={styles.badge}>
+          <OccasionBadge occasion={gift.occasion} size="sm" />
+        </View>
+
+        {/* Info — bottom */}
+        <View style={styles.info}>
+          <Text style={styles.title} numberOfLines={2}>{gift.title}</Text>
+          <Text style={styles.date}>{formattedDate}</Text>
+          {gift.tags.length > 0 && (
+            <Text style={styles.tags} numberOfLines={1}>
+              #{gift.tags.slice(0, 2).join(' #')}
+            </Text>
+          )}
+        </View>
+      </LinearGradient>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  // Outer: owns the shadow. Must NOT have overflow:hidden — Android can't
-  // composite elevation shadows and clip masks on the same layer.
-  cardShadow: {
+  shadow: {
     borderRadius: 20,
     marginBottom: 14,
     shadowColor: '#000',
@@ -106,11 +117,9 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 8,
   },
-  // Inner: owns the clip. No elevation here.
   card: {
     borderRadius: 20,
     overflow: 'hidden',
-    position: 'relative',
   },
   pressed: {
     transform: [{ scale: 0.955 }],
@@ -123,9 +132,6 @@ const styles = StyleSheet.create({
   },
   placeholderEmoji: {
     fontSize: 44,
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
   },
   badge: {
     position: 'absolute',
