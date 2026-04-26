@@ -23,8 +23,6 @@ expo-env.d.ts
 
 # debug
 npm-debug.*
-yarn-debug.*
-yarn-error.*
 
 # macOS
 .DS_Store
@@ -35,8 +33,6 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
-
-app-example
 
 # generated native folders
 /ios
@@ -60,8 +56,5 @@ Thumbs.db
 *.tgz
 *.tar.gz
 .cache/
-
-# Webdev artifacts (checkpoint zips, migrations, etc.)
-.webdev/
 
 .env
