@@ -95,9 +95,10 @@ const config: ExpoConfig = {
     [
       "expo-font",
       {
-        fonts: [
-          "node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialIcons.ttf",
-        ],
+        // Bundled as `material.ttf` so Android registers it under the family
+        // `material` — the name @expo/vector-icons/MaterialIcons hardcodes for
+        // its rendered <Text fontFamily=…/> on Android.
+        fonts: ["./assets/fonts/material.ttf"],
       },
     ],
     [
