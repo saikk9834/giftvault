@@ -39,21 +39,27 @@ function SettingsRow({ icon, label, value, onPress, rightElement, iconBg, iconCo
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
-        styles.settingsRow,
-        { backgroundColor: colors.surface, borderColor: colors.border },
+        { backgroundColor: colors.surface },
         pressed && onPress && { opacity: 0.72 },
       ]}
     >
-      <View style={[styles.settingsIcon, { backgroundColor: bg }]}>
-        <IconSymbol name={icon as any} size={17} color={ic} />
-      </View>
-      <Text style={[styles.settingsLabel, { color: colors.foreground }]}>{label}</Text>
-      <View style={styles.settingsRight}>
-        {value && <Text style={[styles.settingsValue, { color: colors.muted }]}>{value}</Text>}
-        {rightElement}
-        {onPress && !rightElement && (
-          <IconSymbol name="chevron.right" size={15} color={colors.muted} />
-        )}
+      <View style={styles.settingsRow}>
+        <View style={[styles.settingsIcon, { backgroundColor: bg }]}>
+          <IconSymbol name={icon as any} size={17} color={ic} />
+        </View>
+        <Text
+          style={[styles.settingsLabel, { color: colors.foreground }]}
+          numberOfLines={1}
+        >
+          {label}
+        </Text>
+        <View style={styles.settingsRight}>
+          {value && <Text style={[styles.settingsValue, { color: colors.muted }]}>{value}</Text>}
+          {rightElement}
+          {onPress && !rightElement && (
+            <IconSymbol name="chevron.right" size={15} color={colors.muted} />
+          )}
+        </View>
       </View>
     </Pressable>
   );
@@ -191,7 +197,7 @@ export default function ProfileScreen() {
 
         {/* Preferences */}
         <Text style={[styles.sectionTitle, { color: colors.muted }]}>Preferences</Text>
-        <View style={[styles.settingsGroup, { shadowColor: colors.foreground }]}>
+        <View style={[styles.settingsGroup, { borderColor: colors.border }]}>
           <SettingsRow
             icon="bell.fill"
             label="Notifications"
@@ -218,7 +224,7 @@ export default function ProfileScreen() {
 
         {/* About */}
         <Text style={[styles.sectionTitle, { color: colors.muted }]}>About</Text>
-        <View style={[styles.settingsGroup, { shadowColor: colors.foreground }]}>
+        <View style={[styles.settingsGroup, { borderColor: colors.border }]}>
           <SettingsRow
             icon="info.circle"
             label="Version"
@@ -379,10 +385,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     borderRadius: 18,
     overflow: 'hidden',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   settingsRow: {
     flexDirection: 'row',

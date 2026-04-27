@@ -265,7 +265,9 @@ export default function AddGiftScreen() {
         </ScrollView>
 
         {/* Tags */}
-        <Text style={[styles.label, { color: colors.muted }]}>Tags</Text>
+        <Text style={[styles.label, { color: colors.muted }]}>
+          Tags (Optional)
+        </Text>
         <View style={styles.tagInputRow}>
           <TextInput
             value={tagInput}
