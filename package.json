@@ -14,8 +14,8 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "db:push": "drizzle-kit push",
-    "android": "expo start --android",
-    "ios": "expo start --ios"
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",

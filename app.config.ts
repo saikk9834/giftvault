@@ -133,6 +133,10 @@ const config: ExpoConfig = {
         android: {
           buildArchs: ["armeabi-v7a", "arm64-v8a"],
           minSdkVersion: 24,
+          // Allow HTTP (not just HTTPS) so dev/test builds can reach a local
+          // API server at http://10.0.2.2:3000 or a LAN IP. Remove or set to
+          // false before shipping a public release that talks to HTTPS only.
+          usesCleartextTraffic: true,
         },
       },
     ],
