@@ -105,6 +105,7 @@ export default function EditGiftScreen() {
   };
 
   const handleSave = async () => {
+    if (saving) return;
     if (!title.trim()) {
       Alert.alert("Missing Title", "Please enter a name for this gift.");
       return;
@@ -124,7 +125,6 @@ export default function EditGiftScreen() {
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-      setSaving(false);
       router.back();
       setTimeout(() => {
         utils.gifts.list.invalidate();
