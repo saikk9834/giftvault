@@ -87,7 +87,17 @@ export default function RootLayout() {
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
           <PushNotificationBootstrap />
-          <Stack screenOptions={{ headerShown: false, animation: "fade" }}>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              animation: "fade",
+              // Fabric on Android crashes ("addViewAt: child already has a
+              // parent") when react-native-screens detaches frozen screens
+              // and Fabric tries to re-attach the same view tree. Keeping
+              // screens mounted avoids that race.
+              freezeOnBlur: false,
+            }}
+          >
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="login" options={{ presentation: "fullScreenModal", animation: "fade" }} />
             <Stack.Screen name="gift/[id]" options={{ animation: "slide_from_right" }} />

@@ -47,7 +47,12 @@ const config: ExpoConfig = {
   icon: "./assets/images/icon.png",
   scheme: env.scheme,
   userInterfaceStyle: "automatic",
-  newArchEnabled: true,
+  // New Architecture (Fabric + TurboModules) disabled — Fabric had a
+  // recurring "addViewAt: child already has a parent" crash on Android
+  // during modal/screen transitions that bricked all save flows. Falls back
+  // to the legacy Paper renderer, which is stable. Reanimated downgraded to
+  // 3.x to match (4.x requires the new arch).
+  newArchEnabled: false,
   extra: {
     eas: {
       projectId: "52aead86-cfff-444b-9f4d-231af4090966",
