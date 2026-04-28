@@ -5,7 +5,15 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
+import { enableScreens } from "react-native-screens";
 import { Platform } from "react-native";
+
+// Disable native-stack screens. Fabric on Android crashes ("addViewAt: child
+// already has a parent") when react-native-screens detaches inactive screens
+// and Fabric tries to re-attach them during modal transitions. Falling back
+// to the JS-based stack avoids the crash with negligible perf impact for an
+// app this size.
+enableScreens(false);
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
