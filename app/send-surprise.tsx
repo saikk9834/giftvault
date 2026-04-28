@@ -10,10 +10,11 @@ import {
   Platform,
   KeyboardAvoidingView,
   Modal,
+  Keyboard,
+  InteractionManager,
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system/legacy';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -26,21 +27,6 @@ import { GradientButton } from '@/components/ui/gradient-button';
 import { Avatar } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/use-auth';
 import { trpc } from '@/lib/trpc';
-
-async function uriToDataUri(uri: string): Promise<string> {
-  if (Platform.OS === 'web') {
-    const resp = await fetch(uri);
-    const blob = await resp.blob();
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  }
-  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
-  return `data:image/jpeg;base64,${base64}`;
-}
 
 type FriendItem = { id: number; name: string | null };
 
@@ -61,14 +47,16 @@ export default function SendSurpriseScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const pickImage = async (onPick: (uri: string) => void) => {
+  const pickImage = async (onPick: (dataUri: string) => void) => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsMultipleSelection: false,
       quality: 0.7,
+      base64: true,
     });
-    if (!result.canceled && result.assets[0]) {
-      onPick(result.assets[0].uri);
+    const asset = result.assets?.[0];
+    if (!result.canceled && asset?.base64) {
+      onPick(`data:${asset.mimeType ?? 'image/jpeg'};base64,${asset.base64}`);
     }
   };
 
@@ -100,36 +88,31 @@ export default function SendSurpriseScreen() {
       return;
     }
 
+    Keyboard.dismiss();
     setSaving(true);
     try {
-      let puzzleImageData: string | undefined;
-      if (puzzleImageUri) {
-        try { puzzleImageData = await uriToDataUri(puzzleImageUri); } catch {}
-      }
-      let giftImageData: string | undefined;
-      if (giftImageUri) {
-        try { giftImageData = await uriToDataUri(giftImageUri); } catch {}
-      }
       await sendSurprise.mutateAsync({
         recipientId: selectedFriend.id,
         recipientName: selectedFriend.name ?? `User ${selectedFriend.id}`,
         giftContent: giftContent.trim(),
-        giftImage: giftImageData,
+        giftImage: giftImageUri ?? undefined,
         puzzle: puzzle.trim(),
-        puzzleImage: puzzleImageData,
+        puzzleImage: puzzleImageUri ?? undefined,
         answer: answer.trim(),
         deliveryDate: deliveryDate.toISOString(),
       });
       if (Platform.OS !== 'web') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-      router.back();
-      Alert.alert('Surprise Sent! 🎁', 'Your surprise gift has been scheduled!');
+      setSaving(false);
+      InteractionManager.runAfterInteractions(() => {
+        router.back();
+        Alert.alert('Surprise Sent! 🎁', 'Your surprise gift has been scheduled!');
+      });
     } catch (e: any) {
+      setSaving(false);
       if (e?.data?.code === 'UNAUTHORIZED') { router.push('/login' as any); return; }
       Alert.alert('Error', 'Failed to send surprise. Please try again.');
-    } finally {
-      setSaving(false);
     }
   };
 

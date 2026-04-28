@@ -81,13 +81,6 @@ export default function VaultScreen() {
     () => applyFilters(allGifts as any, filters),
     [allGifts, filters],
   );
-  console.log("[Vault]", {
-    rawCount: rawGifts.length,
-    allCount: allGifts.length,
-    filteredCount: filteredGifts.length,
-    ids: filteredGifts.map((g) => g.id),
-  });
-
   const updateFilter = <K extends keyof GiftFilters>(
     key: K,
     value: GiftFilters[K],
@@ -410,22 +403,23 @@ export default function VaultScreen() {
       )}
 
       {/* FAB */}
-      <Pressable
-        onPress={handleAddGift}
-        style={({ pressed }) => [
-          styles.fab,
-          pressed && { transform: [{ scale: 0.92 }] },
-        ]}
-      >
-        <LinearGradient
-          colors={["#8B5CF6", "#EC4899"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.fabGradient}
+      <View style={styles.fab} pointerEvents="box-none">
+        <Pressable
+          onPress={handleAddGift}
+          style={({ pressed }) =>
+            pressed ? { transform: [{ scale: 0.92 }] } : null
+          }
         >
-          <IconSymbol name="plus" size={26} color="#fff" />
-        </LinearGradient>
-      </Pressable>
+          <LinearGradient
+            colors={["#8B5CF6", "#EC4899"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.fabGradient}
+          >
+            <IconSymbol name="plus" size={26} color="#fff" />
+          </LinearGradient>
+        </Pressable>
+      </View>
     </ScreenContainer>
   );
 }
@@ -582,8 +576,8 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: "absolute",
-    bottom: 120,
-    right: 30,
+    top: 787,
+    left: 5,
     borderRadius: 20,
     shadowColor: "#8B5CF6",
     shadowOffset: { width: 0, height: 6 },

@@ -143,7 +143,10 @@ const config: ExpoConfig = {
   ],
   experiments: {
     typedRoutes: true,
-    reactCompiler: true,
+    // reactCompiler: true,  // Disabled — interacted badly with Fabric's view
+    // mounting during modal screen transitions, causing "addViewAt: child
+    // already has a parent" crashes on Android save flows. Re-enable only
+    // after upgrading react-native-screens / RN to a version that fixes it.
   },
 };
 

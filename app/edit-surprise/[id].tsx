@@ -10,10 +10,11 @@ import {
   Platform,
   KeyboardAvoidingView,
   ActivityIndicator,
+  Keyboard,
+  InteractionManager,
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system/legacy';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -23,21 +24,6 @@ import { useColors } from '@/hooks/use-colors';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { GradientButton } from '@/components/ui/gradient-button';
 import { trpc } from '@/lib/trpc';
-
-async function uriToDataUri(uri: string): Promise<string> {
-  if (Platform.OS === 'web') {
-    const resp = await fetch(uri);
-    const blob = await resp.blob();
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  }
-  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
-  return `data:image/jpeg;base64,${base64}`;
-}
 
 export default function EditSurpriseScreen() {
   const colors = useColors();
@@ -78,9 +64,11 @@ export default function EditSurpriseScreen() {
       mediaTypes: ['images'],
       allowsMultipleSelection: false,
       quality: 0.7,
+      base64: true,
     });
-    if (!result.canceled && result.assets[0]) {
-      setPuzzleImageUri(result.assets[0].uri);
+    const asset = result.assets?.[0];
+    if (!result.canceled && asset?.base64) {
+      setPuzzleImageUri(`data:${asset.mimeType ?? 'image/jpeg'};base64,${asset.base64}`);
       setPuzzleImageChanged(true);
     }
   };
@@ -116,38 +104,29 @@ export default function EditSurpriseScreen() {
       return;
     }
 
+    Keyboard.dismiss();
     setSaving(true);
     try {
-      // Only convert to data URI if the user picked a new local image
-      let resolvedPuzzleImage: string | null | undefined = undefined;
-      if (puzzleImageChanged) {
-        if (puzzleImageUri && !puzzleImageUri.startsWith('data:')) {
-          try { resolvedPuzzleImage = await uriToDataUri(puzzleImageUri); } catch { resolvedPuzzleImage = null; }
-        } else {
-          resolvedPuzzleImage = puzzleImageUri; // data URI or null (removed)
-        }
-      }
-
       await updateSurprise.mutateAsync({
         id: numericId,
         giftContent: giftContent.trim(),
         puzzle: puzzle.trim(),
-        ...(resolvedPuzzleImage !== undefined ? { puzzleImage: resolvedPuzzleImage } : {}),
+        ...(puzzleImageChanged ? { puzzleImage: puzzleImageUri } : {}),
         answer: answer.trim(),
         deliveryDate: new Date(deliveryDate).toISOString(),
       });
       if (Platform.OS !== 'web') {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-      router.back();
+      setSaving(false);
+      InteractionManager.runAfterInteractions(() => router.back());
     } catch (e: any) {
+      setSaving(false);
       if (Platform.OS === 'web') {
         window.alert(e?.message ?? 'Failed to save changes.');
       } else {
         Alert.alert('Error', e?.message ?? 'Failed to save changes.');
       }
-    } finally {
-      setSaving(false);
     }
   };
 

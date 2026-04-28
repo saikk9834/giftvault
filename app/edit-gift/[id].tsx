@@ -10,10 +10,11 @@ import {
   Platform,
   KeyboardAvoidingView,
   Modal,
+  Keyboard,
+  InteractionManager,
 } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system/legacy";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -26,24 +27,6 @@ import { GradientButton } from "@/components/ui/gradient-button";
 import { TagChip } from "@/components/ui/tag-chip";
 import { Occasion, OCCASIONS } from "@/lib/types";
 import { trpc } from "@/lib/trpc";
-
-async function encodeUri(uri: string): Promise<string> {
-  if (uri.startsWith("data:")) return uri;
-  if (Platform.OS === "web") {
-    const resp = await fetch(uri);
-    const blob = await resp.blob();
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  }
-  const base64 = await FileSystem.readAsStringAsync(uri, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
-  return `data:image/jpeg;base64,${base64}`;
-}
 
 export default function EditGiftScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -107,11 +90,14 @@ export default function EditGiftScreen() {
       mediaTypes: ["images"],
       allowsMultipleSelection: true,
       quality: 0.8,
+      base64: true,
       selectionLimit: 5 - photos.length,
     });
     if (!result.canceled) {
-      const uris = result.assets.map((a) => a.uri);
-      setPhotos((prev) => [...prev, ...uris].slice(0, 5));
+      const dataUris = result.assets
+        .filter((a) => a.base64)
+        .map((a) => `data:${a.mimeType ?? "image/jpeg"};base64,${a.base64}`);
+      setPhotos((prev) => [...prev, ...dataUris].slice(0, 5));
     }
   };
 
@@ -126,18 +112,13 @@ export default function EditGiftScreen() {
       Alert.alert("Missing Title", "Please enter a name for this gift.");
       return;
     }
+    Keyboard.dismiss();
     setSaving(true);
     try {
-      const encodedPhotos: string[] = [];
-      for (const uri of photos) {
-        try {
-          encodedPhotos.push(await encodeUri(uri));
-        } catch {}
-      }
       await updateGift.mutateAsync({
         id: numericId,
         title: title.trim(),
-        photos: encodedPhotos,
+        photos,
         dateReceived: format(dateReceived, "yyyy-MM-dd"),
         occasion,
         tags,
@@ -146,15 +127,15 @@ export default function EditGiftScreen() {
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-      router.back();
+      setSaving(false);
+      InteractionManager.runAfterInteractions(() => router.back());
     } catch (e: any) {
+      setSaving(false);
       if (e?.data?.code === "UNAUTHORIZED") {
         router.push("/login" as any);
         return;
       }
       Alert.alert("Error", "Failed to save changes. Please try again.");
-    } finally {
-      setSaving(false);
     }
   };
 

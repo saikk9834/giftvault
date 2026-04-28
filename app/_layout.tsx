@@ -87,14 +87,14 @@ export default function RootLayout() {
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
           <PushNotificationBootstrap />
-          <Stack screenOptions={{ headerShown: false, animation: "slide_from_bottom" }}>
+          <Stack screenOptions={{ headerShown: false, animation: "fade" }}>
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="login" options={{ presentation: "fullScreenModal", animation: "fade" }} />
             <Stack.Screen name="gift/[id]" options={{ animation: "slide_from_right" }} />
             <Stack.Screen name="surprise/[id]" options={{ animation: "slide_from_right" }} />
-            <Stack.Screen name="add-gift" options={{ presentation: "modal", animation: "slide_from_bottom" }} />
-            <Stack.Screen name="send-surprise" options={{ presentation: "modal", animation: "slide_from_bottom" }} />
-            <Stack.Screen name="edit-surprise/[id]" options={{ presentation: "modal", animation: "slide_from_bottom" }} />
+            <Stack.Screen name="add-gift" options={{ animation: "fade" }} />
+            <Stack.Screen name="send-surprise" options={{ animation: "fade" }} />
+            <Stack.Screen name="edit-surprise/[id]" options={{ animation: "fade" }} />
           </Stack>
           <StatusBar style="light" />
         </QueryClientProvider>

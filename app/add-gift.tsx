@@ -9,6 +9,8 @@ import {
   Alert,
   Platform,
   KeyboardAvoidingView,
+  Keyboard,
+  InteractionManager,
 } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
@@ -22,7 +24,6 @@ import { GradientButton } from "@/components/ui/gradient-button";
 import { TagChip } from "@/components/ui/tag-chip";
 import { Occasion, OCCASIONS } from "@/lib/types";
 import { trpc } from "@/lib/trpc";
-import * as FileSystem from "expo-file-system/legacy";
 
 export default function AddGiftScreen() {
   const colors = useColors();
@@ -48,11 +49,14 @@ export default function AddGiftScreen() {
       mediaTypes: ["images"],
       allowsMultipleSelection: true,
       quality: 0.8,
+      base64: true,
       selectionLimit: 5 - photos.length,
     });
     if (!result.canceled) {
-      const uris = result.assets.map((a) => a.uri);
-      setPhotos((prev) => [...prev, ...uris].slice(0, 5));
+      const dataUris = result.assets
+        .filter((a) => a.base64)
+        .map((a) => `data:${a.mimeType ?? "image/jpeg"};base64,${a.base64}`);
+      setPhotos((prev) => [...prev, ...dataUris].slice(0, 5));
     }
   };
 
@@ -73,36 +77,12 @@ export default function AddGiftScreen() {
       Alert.alert("Missing Title", "Please enter a name for this gift.");
       return;
     }
+    Keyboard.dismiss();
     setSaving(true);
     try {
-      // Convert each photo URI to a base64 data URI for storage
-      const dataUris: string[] = [];
-      for (const uri of photos) {
-        try {
-          let dataUri: string;
-          if (Platform.OS === "web") {
-            const resp = await fetch(uri);
-            const blob = await resp.blob();
-            dataUri = await new Promise<string>((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = () => resolve(reader.result as string);
-              reader.onerror = reject;
-              reader.readAsDataURL(blob);
-            });
-          } else {
-            const base64 = await FileSystem.readAsStringAsync(uri, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-            dataUri = `data:image/jpeg;base64,${base64}`;
-          }
-          dataUris.push(dataUri);
-        } catch {
-          // skip photos that fail to read
-        }
-      }
       await createGift.mutateAsync({
         title: title.trim(),
-        photos: dataUris,
+        photos,
         dateReceived,
         occasion,
         tags,
@@ -111,15 +91,15 @@ export default function AddGiftScreen() {
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-      router.back();
+      setSaving(false);
+      InteractionManager.runAfterInteractions(() => router.back());
     } catch (e: any) {
+      setSaving(false);
       if (e?.data?.code === "UNAUTHORIZED") {
         router.push("/login" as any);
         return;
       }
       Alert.alert("Error", "Failed to save gift. Please try again.");
-    } finally {
-      setSaving(false);
     }
   };
 
