@@ -73,6 +73,7 @@ export default function AddGiftScreen() {
   };
 
   const handleSave = async () => {
+    if (saving) return;
     if (!title.trim()) {
       Alert.alert("Missing Title", "Please enter a name for this gift.");
       return;
@@ -91,7 +92,9 @@ export default function AddGiftScreen() {
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-      setSaving(false);
+      // Don't setSaving(false) — the screen is unmounting via router.back().
+      // A re-render right before unmount races with Fabric's view detach and
+      // crashes Android with "addViewAt: child already has a parent".
       router.back();
       setTimeout(() => utils.gifts.list.invalidate(), 400);
     } catch (e: any) {
