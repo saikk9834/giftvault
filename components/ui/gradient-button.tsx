@@ -42,6 +42,9 @@ export function GradientButton({
   const paddingV = size === 'sm' ? 11 : size === 'lg' ? 18 : 14;
   const fontSize = size === 'sm' ? 13 : size === 'lg' ? 17 : 15;
 
+  // Render Text + Spinner BOTH at all times, toggling visibility via opacity.
+  // Conditional swaps inside an overflow:hidden clipping container fight
+  // Fabric on Android (the ReactClippingViewManager mount race).
   return (
     <View
       style={[
@@ -58,25 +61,31 @@ export function GradientButton({
       <Pressable
         onPress={handlePress}
         disabled={disabled || loading}
-        style={({ pressed }) => [
-          styles.pressable,
-          fullWidth && styles.fullWidth,
-          (disabled || loading) && styles.disabled,
-          pressed && styles.pressed,
-        ]}
+        style={({ pressed }) => (pressed ? styles.pressed : null)}
       >
-        <LinearGradient
-          colors={disabled ? ['#9CA3AF', '#6B7280'] : GRADIENTS[variant]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={[styles.gradient, { paddingVertical: paddingV }]}
+        <View
+          style={[
+            styles.pressable,
+            fullWidth && styles.fullWidth,
+            (disabled || loading) && styles.disabled,
+          ]}
         >
-          {loading ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <Text style={[styles.text, { fontSize }]}>{title}</Text>
-          )}
-        </LinearGradient>
+          <LinearGradient
+            colors={disabled ? ['#9CA3AF', '#6B7280'] : GRADIENTS[variant]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[styles.gradient, { paddingVertical: paddingV }]}
+          >
+            <Text style={[styles.text, { fontSize, opacity: loading ? 0 : 1 }]}>
+              {title}
+            </Text>
+            {loading && (
+              <View style={styles.spinnerOverlay} pointerEvents="none">
+                <ActivityIndicator color="#fff" size="small" />
+              </View>
+            )}
+          </LinearGradient>
+        </View>
       </Pressable>
     </View>
   );
@@ -107,5 +116,10 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     letterSpacing: 0.2,
+  },
+  spinnerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

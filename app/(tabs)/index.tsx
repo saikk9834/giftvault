@@ -143,6 +143,11 @@ export default function VaultScreen() {
           columnWrapperStyle={styles.row}
           contentContainerStyle={styles.grid}
           showsVerticalScrollIndicator={false}
+          // Critical on Android+Fabric: removeClippedSubviews defaults to true
+          // and the detach/reattach of off-screen rows trips the
+          // "addViewAt: child already has a parent" mounting crash. Force it
+          // off until react-native or react-native-screens ships a fix.
+          removeClippedSubviews={false}
           renderItem={({ item }) => <GiftCard gift={item as any} />}
           ListEmptyComponent={
             <EmptyState

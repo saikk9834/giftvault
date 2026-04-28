@@ -242,6 +242,7 @@ export default function GiftDetailScreen() {
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
+            removeClippedSubviews={false}
             initialScrollIndex={lightboxIndex}
             getItemLayout={(_, index) => ({
               length: SCREEN_WIDTH,

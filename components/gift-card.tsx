@@ -71,7 +71,7 @@ export function GiftCard({ gift }: GiftCardProps) {
         {hasPhoto && (
           <Image
             source={{ uri: gift.photos[0] }}
-            style={StyleSheet.absoluteFill}
+            style={[StyleSheet.absoluteFill, { borderRadius: 20 }]}
             contentFit="cover"
             transition={200}
           />
@@ -88,7 +88,7 @@ export function GiftCard({ gift }: GiftCardProps) {
         <LinearGradient
           colors={["transparent", "rgba(0,0,0,0.15)", "rgba(0,0,0,0.75)"]}
           locations={[0, 0.45, 1]}
-          style={StyleSheet.absoluteFill}
+          style={[StyleSheet.absoluteFill, { borderRadius: 20 }]}
         />
 
         {/* Occasion badge — top right */}
@@ -126,7 +126,10 @@ const styles = StyleSheet.create({
   },
   card: {
     borderRadius: 20,
-    overflow: "hidden",
+    // overflow:'hidden' removed — it makes this view a ReactClippingView,
+    // which is what Fabric crashes on when the FlatList re-renders. Image
+    // children below set their own borderRadius to keep the rounded look.
+    // overflow: "hidden",
   },
   pressed: {
     transform: [{ scale: 0.955 }],
