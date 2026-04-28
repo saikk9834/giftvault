@@ -62,9 +62,11 @@ export default function SendSurpriseScreen() {
 
   const utils = trpc.useUtils();
   const { data: rawFriends = [] } = trpc.friends.list.useQuery();
-  const sendSurprise = trpc.surprises.send.useMutation({
-    onSuccess: () => utils.surprises.list.invalidate(),
-  });
+  // NOTE: do NOT invalidate in onSuccess — that refetches the surprises tab
+  // while it's still mounted under this form, racing with our navigation back
+  // and crashing Fabric ("addViewAt: child already has a parent"). Invalidate
+  // explicitly AFTER navigation in handleSend.
+  const sendSurprise = trpc.surprises.send.useMutation();
 
   // Build accepted friend list — otherName is joined server-side in getFriendsForUser
   const friends = rawFriends
@@ -105,10 +107,11 @@ export default function SendSurpriseScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
       setSaving(false);
-      InteractionManager.runAfterInteractions(() => {
-        router.back();
-        Alert.alert('Surprise Sent! 🎁', 'Your surprise gift has been scheduled!');
-      });
+      router.back();
+      // Refresh the surprises list AFTER navigation settles. Setting timeout
+      // (rather than InteractionManager) gives Fabric a clear window to finish
+      // the screen-back transition before any list re-render fires.
+      setTimeout(() => utils.surprises.list.invalidate(), 400);
     } catch (e: any) {
       setSaving(false);
       if (e?.data?.code === 'UNAUTHORIZED') { router.push('/login' as any); return; }

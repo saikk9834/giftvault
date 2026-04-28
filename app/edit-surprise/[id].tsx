@@ -79,12 +79,9 @@ export default function EditSurpriseScreen() {
   };
 
   const utils = trpc.useUtils();
-  const updateSurprise = trpc.surprises.update.useMutation({
-    onSuccess: () => {
-      utils.surprises.list.invalidate();
-      utils.surprises.getById.invalidate({ id: numericId });
-    },
-  });
+  // Invalidate AFTER navigation in handleSave — invalidating in onSuccess
+  // races with the screen-back transition and crashes Fabric.
+  const updateSurprise = trpc.surprises.update.useMutation();
 
   const handleSave = async () => {
     if (!giftContent.trim()) {
@@ -119,7 +116,11 @@ export default function EditSurpriseScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
       setSaving(false);
-      InteractionManager.runAfterInteractions(() => router.back());
+      router.back();
+      setTimeout(() => {
+        utils.surprises.list.invalidate();
+        utils.surprises.getById.invalidate({ id: numericId });
+      }, 400);
     } catch (e: any) {
       setSaving(false);
       if (Platform.OS === 'web') {

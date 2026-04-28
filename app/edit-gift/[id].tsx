@@ -78,12 +78,9 @@ export default function EditGiftScreen() {
     }
   }, [rawGift, loaded]);
 
-  const updateGift = trpc.gifts.update.useMutation({
-    onSuccess: () => {
-      utils.gifts.list.invalidate();
-      utils.gifts.getById.invalidate({ id: numericId });
-    },
-  });
+  // Invalidate AFTER navigation in handleSave — invalidating in onSuccess
+  // races with the screen-back transition and crashes Fabric.
+  const updateGift = trpc.gifts.update.useMutation();
 
   const pickPhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -128,7 +125,11 @@ export default function EditGiftScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
       setSaving(false);
-      InteractionManager.runAfterInteractions(() => router.back());
+      router.back();
+      setTimeout(() => {
+        utils.gifts.list.invalidate();
+        utils.gifts.getById.invalidate({ id: numericId });
+      }, 400);
     } catch (e: any) {
       setSaving(false);
       if (e?.data?.code === "UNAUTHORIZED") {

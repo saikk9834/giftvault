@@ -40,9 +40,9 @@ export default function AddGiftScreen() {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const utils = trpc.useUtils();
-  const createGift = trpc.gifts.create.useMutation({
-    onSuccess: () => utils.gifts.list.invalidate(),
-  });
+  // Invalidate AFTER navigation in handleSave — invalidating in onSuccess
+  // races with the screen-back transition and crashes Fabric.
+  const createGift = trpc.gifts.create.useMutation();
 
   const pickPhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -92,7 +92,8 @@ export default function AddGiftScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
       setSaving(false);
-      InteractionManager.runAfterInteractions(() => router.back());
+      router.back();
+      setTimeout(() => utils.gifts.list.invalidate(), 400);
     } catch (e: any) {
       setSaving(false);
       if (e?.data?.code === "UNAUTHORIZED") {
