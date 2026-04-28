@@ -79,11 +79,16 @@ export function GradientButton({
             <Text style={[styles.text, { fontSize, opacity: loading ? 0 : 1 }]}>
               {title}
             </Text>
-            {loading && (
-              <View style={styles.spinnerOverlay} pointerEvents="none">
-                <ActivityIndicator color="#fff" size="small" />
-              </View>
-            )}
+            {/* Always mounted — only opacity toggles. Conditionally mounting
+                this View inside an overflow:hidden parent is the exact
+                trigger for the Fabric "addViewAt: child already has a parent"
+                crash on Android. */}
+            <View
+              style={[styles.spinnerOverlay, { opacity: loading ? 1 : 0 }]}
+              pointerEvents="none"
+            >
+              <ActivityIndicator color="#fff" size="small" />
+            </View>
           </LinearGradient>
         </View>
       </Pressable>
@@ -94,7 +99,9 @@ export function GradientButton({
 const styles = StyleSheet.create({
   pressable: {
     borderRadius: 16,
-    overflow: 'hidden',
+    // overflow:'hidden' removed — it makes this a ReactClippingView, which
+    // is what Fabric crashes on. The LinearGradient inside has its own
+    // borderRadius, so visual rounding is preserved without clipping here.
   },
   fullWidth: {
     width: '100%',
