@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,20 +9,28 @@ import {
   Alert,
   Platform,
   Switch,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
 
-import { ScreenContainer } from '@/components/screen-container';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Avatar } from '@/components/ui/avatar';
-import { useColors } from '@/hooks/use-colors';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useRouter } from 'expo-router';
-import { useAuth } from '@/hooks/use-auth';
-import { trpc } from '@/lib/trpc';
+import { ScreenContainer } from "@/components/screen-container";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import { Avatar } from "@/components/ui/avatar";
+import { useColors } from "@/hooks/use-colors";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useRouter } from "expo-router";
+import { useAuth } from "@/hooks/use-auth";
+import { trpc } from "@/lib/trpc";
 
-function SettingsRow({ icon, label, value, onPress, rightElement, iconBg, iconColor }: {
+function SettingsRow({
+  icon,
+  label,
+  value,
+  onPress,
+  rightElement,
+  iconBg,
+  iconColor,
+}: {
   icon: string;
   label: string;
   value?: string;
@@ -32,7 +40,7 @@ function SettingsRow({ icon, label, value, onPress, rightElement, iconBg, iconCo
   iconColor?: string;
 }) {
   const colors = useColors();
-  const bg = iconBg ?? colors.primary + '20';
+  const bg = iconBg ?? colors.primary + "20";
   const ic = iconColor ?? colors.primary;
 
   return (
@@ -54,7 +62,11 @@ function SettingsRow({ icon, label, value, onPress, rightElement, iconBg, iconCo
           {label}
         </Text>
         <View style={styles.settingsRight}>
-          {value && <Text style={[styles.settingsValue, { color: colors.muted }]}>{value}</Text>}
+          {value && (
+            <Text style={[styles.settingsValue, { color: colors.muted }]}>
+              {value}
+            </Text>
+          )}
           {rightElement}
           {onPress && !rightElement && (
             <IconSymbol name="chevron.right" size={15} color={colors.muted} />
@@ -71,45 +83,55 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { user, isAuthenticated, logout } = useAuth();
   const [editingName, setEditingName] = useState(false);
-  const [newName, setNewName] = useState(user?.name ?? '');
+  const [newName, setNewName] = useState(user?.name ?? "");
 
-  const { data: gifts = [] } = trpc.gifts.list.useQuery(undefined, { enabled: isAuthenticated });
-  const { data: surprises = [] } = trpc.surprises.list.useQuery(undefined, { enabled: isAuthenticated });
-  const { data: friendsList = [] } = trpc.friends.list.useQuery(undefined, { enabled: isAuthenticated });
+  const { data: gifts = [] } = trpc.gifts.list.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+  const { data: surprises = [] } = trpc.surprises.list.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+  const { data: friendsList = [] } = trpc.friends.list.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
 
   const stats = {
     gifts: gifts.length,
     surprisesSent: surprises.filter((s) => s.senderId === user?.id).length,
-    surprisesReceived: surprises.filter((s) => s.recipientId === user?.id).length,
-    friends: friendsList.filter((f) => f.status === 'accepted').length,
+    surprisesReceived: surprises.filter((s) => s.recipientId === user?.id)
+      .length,
+    friends: friendsList.filter((f) => f.status === "accepted").length,
   };
 
-  const displayName = user?.name ?? 'GiftVault User';
-  const username = user?.email?.split('@')[0] ?? 'user';
+  const displayName = user?.name ?? "GiftVault User";
+  const username = user?.email?.split("@")[0] ?? "user";
 
   const handleSaveName = async () => {
     setEditingName(false);
-    if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (Platform.OS !== "web")
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
   const handleLogout = () => {
     const doLogout = async () => {
       try {
         await logout();
-        if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        router.replace('/login' as any);
+        if (Platform.OS !== "web")
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        router.replace("/login" as any);
       } catch {
-        if (Platform.OS === 'web') window.alert('Failed to sign out. Please try again.');
-        else Alert.alert('Error', 'Failed to sign out. Please try again.');
+        if (Platform.OS === "web")
+          window.alert("Failed to sign out. Please try again.");
+        else Alert.alert("Error", "Failed to sign out. Please try again.");
       }
     };
 
-    if (Platform.OS === 'web') {
-      if (window.confirm('Are you sure you want to sign out?')) doLogout();
+    if (Platform.OS === "web") {
+      if (window.confirm("Are you sure you want to sign out?")) doLogout();
     } else {
-      Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign Out', style: 'destructive', onPress: doLogout },
+      Alert.alert("Sign Out", "Are you sure you want to sign out?", [
+        { text: "Cancel", style: "cancel" },
+        { text: "Sign Out", style: "destructive", onPress: doLogout },
       ]);
     }
   };
@@ -117,11 +139,31 @@ export default function ProfileScreen() {
   if (!isAuthenticated) {
     return (
       <ScreenContainer>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-          <Text style={{ color: colors.foreground, fontSize: 20, fontWeight: '700', marginBottom: 8 }}>
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 32,
+          }}
+        >
+          <Text
+            style={{
+              color: colors.foreground,
+              fontSize: 20,
+              fontWeight: "700",
+              marginBottom: 8,
+            }}
+          >
             Sign in to GiftVault
           </Text>
-          <Text style={{ color: colors.muted, textAlign: 'center', marginBottom: 24 }}>
+          <Text
+            style={{
+              color: colors.muted,
+              textAlign: "center",
+              marginBottom: 24,
+            }}
+          >
             Create an account to sync your gifts and send surprises to friends.
           </Text>
         </View>
@@ -131,11 +173,13 @@ export default function ProfileScreen() {
 
   return (
     <ScreenContainer>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+      >
         {/* Profile hero */}
         <LinearGradient
-          colors={['#4C1D95', '#6D28D9', '#9333EA']}
+          colors={["#4C1D95", "#6D28D9", "#9333EA"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.hero}
@@ -163,9 +207,16 @@ export default function ProfileScreen() {
                 </Pressable>
               </View>
             ) : (
-              <Pressable onPress={() => setEditingName(true)} style={styles.nameRow}>
+              <Pressable
+                onPress={() => setEditingName(true)}
+                style={styles.nameRow}
+              >
                 <Text style={styles.displayName}>{displayName}</Text>
-                <IconSymbol name="pencil" size={13} color="rgba(255,255,255,0.55)" />
+                <IconSymbol
+                  name="pencil"
+                  size={13}
+                  color="rgba(255,255,255,0.55)"
+                />
               </Pressable>
             )}
             <Text style={styles.username}>@{username}</Text>
@@ -196,7 +247,9 @@ export default function ProfileScreen() {
         </LinearGradient>
 
         {/* Preferences */}
-        <Text style={[styles.sectionTitle, { color: colors.muted }]}>Preferences</Text>
+        <Text style={[styles.sectionTitle, { color: colors.muted }]}>
+          Preferences
+        </Text>
         <View style={[styles.settingsGroup, { borderColor: colors.border }]}>
           <SettingsRow
             icon="bell.fill"
@@ -207,23 +260,27 @@ export default function ProfileScreen() {
               <Switch
                 value={true}
                 onValueChange={() => {}}
-                trackColor={{ true: '#8B5CF6', false: colors.border }}
+                trackColor={{ true: "#8B5CF6", false: colors.border }}
                 thumbColor="#fff"
               />
             }
           />
-          <View style={[styles.rowDivider, { backgroundColor: colors.border }]} />
+          <View
+            style={[styles.rowDivider, { backgroundColor: colors.border }]}
+          />
           <SettingsRow
             icon="moon.fill"
             label="Dark Mode"
             iconBg="#6366F120"
             iconColor="#6366F1"
-            value={colorScheme === 'dark' ? 'On' : 'Off'}
+            value={colorScheme === "dark" ? "On" : "Off"}
           />
         </View>
 
         {/* About */}
-        <Text style={[styles.sectionTitle, { color: colors.muted }]}>About</Text>
+        <Text style={[styles.sectionTitle, { color: colors.muted }]}>
+          About
+        </Text>
         <View style={[styles.settingsGroup, { borderColor: colors.border }]}>
           <SettingsRow
             icon="info.circle"
@@ -232,21 +289,32 @@ export default function ProfileScreen() {
             iconColor="#0EA5E9"
             value="1.0.0"
           />
-          <View style={[styles.rowDivider, { backgroundColor: colors.border }]} />
+          <View
+            style={[styles.rowDivider, { backgroundColor: colors.border }]}
+          />
           <SettingsRow
             icon="star.fill"
             label="Rate GiftVault"
             iconBg="#F59E0B20"
             iconColor="#F59E0B"
-            onPress={() => Alert.alert('Thank you!', 'Your feedback means the world to us. 💜')}
+            onPress={() =>
+              Alert.alert(
+                "Thank you!",
+                "Your feedback means the world to us. 💜",
+              )
+            }
           />
-          <View style={[styles.rowDivider, { backgroundColor: colors.border }]} />
+          <View
+            style={[styles.rowDivider, { backgroundColor: colors.border }]}
+          />
           <SettingsRow
             icon="square.and.arrow.up"
             label="Share App"
             iconBg="#22C55E20"
             iconColor="#22C55E"
-            onPress={() => Alert.alert('Share', 'giftvault.app — Share the love!')}
+            onPress={() =>
+              Alert.alert("Share", "giftvault.app — Share the love!")
+            }
           />
         </View>
 
@@ -260,18 +328,21 @@ export default function ProfileScreen() {
             ]}
           >
             <LinearGradient
-              colors={['#EF444411', '#EF444418']}
+              colors={["#EF444411", "#EF444418"]}
               style={styles.signOutGradient}
             >
-              <IconSymbol name="rectangle.portrait.and.arrow.right" size={18} color="#EF4444" />
+              <IconSymbol
+                name="rectangle.portrait.and.arrow.right"
+                size={18}
+                color="#EF4444"
+              />
               <Text style={styles.signOutText}>Sign Out</Text>
             </LinearGradient>
           </Pressable>
           <Text style={[styles.signOutHint, { color: colors.muted }]}>
-            Signed in as {user?.email ?? user?.name ?? 'you'}
+            Signed in as {user?.email ?? user?.name ?? "you"}
           </Text>
         </View>
-
       </ScrollView>
     </ScreenContainer>
   );
@@ -284,99 +355,108 @@ const styles = StyleSheet.create({
     paddingTop: 40,
     paddingBottom: 24,
     paddingHorizontal: 20,
-    overflow: 'hidden',
+    overflow: "hidden",
     gap: 0,
   },
   heroOrb1: {
-    position: 'absolute',
+    position: "absolute",
     width: 220,
     height: 220,
     borderRadius: 110,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: "rgba(255,255,255,0.05)",
     top: -70,
     right: -50,
   },
   heroOrb2: {
-    position: 'absolute',
+    position: "absolute",
     width: 140,
     height: 140,
     borderRadius: 70,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: "rgba(255,255,255,0.04)",
     bottom: -30,
     left: 30,
   },
   heroTop: {
-    alignItems: 'center',
+    alignItems: "center",
     gap: 8,
     marginBottom: 20,
   },
   nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
     marginTop: 4,
   },
   displayName: {
     fontSize: 24,
-    fontWeight: '800',
-    color: '#fff',
+    fontWeight: "800",
+    color: "#fff",
     letterSpacing: -0.3,
   },
   username: {
     fontSize: 14,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.6)',
+    fontWeight: "500",
+    color: "rgba(255,255,255,0.6)",
   },
   nameEditRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     marginTop: 4,
   },
   nameInput: {
     borderBottomWidth: 2,
-    borderBottomColor: 'rgba(255,255,255,0.6)',
+    borderBottomColor: "rgba(255,255,255,0.6)",
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: "700",
     paddingVertical: 4,
     paddingHorizontal: 8,
     minWidth: 160,
-    textAlign: 'center',
-    color: '#fff',
+    textAlign: "center",
+    color: "#fff",
   },
   saveNameBtn: {
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(255,255,255,0.25)",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   statsRow: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    flexDirection: "row",
+    backgroundColor: "rgba(255,255,255,0.12)",
     borderRadius: 16,
     paddingVertical: 12,
     paddingHorizontal: 6,
-    alignItems: 'center',
+    alignItems: "center",
   },
-  statItem: { flex: 1, alignItems: 'center' },
-  statNum: { fontSize: 20, fontWeight: '800', color: '#fff', letterSpacing: -0.5 },
+  statItem: { flex: 1, alignItems: "center" },
+  statNum: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#fff",
+    letterSpacing: -0.5,
+  },
   statLabel: {
     fontSize: 10,
-    color: 'rgba(255,255,255,0.65)',
-    fontWeight: '600',
+    color: "rgba(255,255,255,0.65)",
+    fontWeight: "600",
     marginTop: 2,
     letterSpacing: 0.2,
   },
-  statDivider: { width: 1, height: 26, backgroundColor: 'rgba(255,255,255,0.2)' },
+  statDivider: {
+    width: 1,
+    height: 26,
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
 
   sectionTitle: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: 1,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     paddingHorizontal: 20,
     marginBottom: 10,
     marginTop: 20,
@@ -384,12 +464,12 @@ const styles = StyleSheet.create({
   settingsGroup: {
     marginHorizontal: 16,
     borderRadius: 18,
-    overflow: 'hidden',
+    overflow: "hidden",
     borderWidth: StyleSheet.hairlineWidth,
   },
   settingsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 14,
     borderWidth: 0,
     gap: 12,
@@ -398,34 +478,34 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
-  settingsLabel: { flex: 1, fontSize: 15, fontWeight: '500' },
-  settingsRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  settingsLabel: { flex: 1, fontSize: 15, fontWeight: "500" },
+  settingsRight: { flexDirection: "row", alignItems: "center", gap: 6 },
   settingsValue: { fontSize: 14 },
   rowDivider: { height: StyleSheet.hairlineWidth, marginLeft: 60 },
 
   signOutSection: {
-    marginHorizontal: 16,
+    marginHorizontal: 10,
     marginTop: 20,
     gap: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   signOutBtn: {
-    width: '100%',
+    width: "100%",
     borderRadius: 16,
-    overflow: 'hidden',
+    overflow: "hidden",
     borderWidth: 1,
-    borderColor: '#EF444433',
+    borderColor: "#EF444433",
   },
   signOutGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 10,
     paddingVertical: 15,
   },
-  signOutText: { fontSize: 16, fontWeight: '700', color: '#EF4444' },
+  signOutText: { fontSize: 16, fontWeight: "700", color: "#EF4444" },
   signOutHint: { fontSize: 12 },
 });

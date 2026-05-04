@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo } from "react";
+import React, { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { GiftCard } from "@/components/gift-card";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { EmptyState } from "@/components/ui/empty-state";
+import { WelcomeCard, shouldShowWelcome } from "@/components/welcome-card";
 import { useColors } from "@/hooks/use-colors";
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/lib/trpc";
@@ -43,7 +44,14 @@ export default function VaultScreen() {
   const { isAuthenticated, loading: authLoading, user } = useAuth();
   const [filters, setFilters] = useState<GiftFilters>(DEFAULT_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
   const searchRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      shouldShowWelcome().then((show) => setShowWelcome(show));
+    }
+  }, [isAuthenticated]);
 
   const {
     data: rawGifts = [],
@@ -406,6 +414,8 @@ export default function VaultScreen() {
           }
         />
       )}
+
+      <WelcomeCard visible={showWelcome} onDismiss={() => setShowWelcome(false)} />
 
       {/* FAB */}
       <View style={styles.fab} pointerEvents="box-none">
