@@ -505,6 +505,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 10,
     paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 15,
   },
   signOutText: { fontSize: 16, fontWeight: "700", color: "#EF4444" },
   signOutHint: { fontSize: 12 },
