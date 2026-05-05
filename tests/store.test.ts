@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi } from "vitest";
 
-vi.mock('@react-native-async-storage/async-storage', () => ({
+vi.mock("@react-native-async-storage/async-storage", () => ({
   default: {
     getItem: vi.fn().mockResolvedValue(null),
     setItem: vi.fn().mockResolvedValue(undefined),
@@ -8,69 +8,70 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
   },
 }));
 
-import { applyFilters } from '../lib/store/gift-store';
-import { Gift, GiftFilters } from '../lib/types';
+import { applyFilters } from "../lib/store/gift-store";
+import { Gift, GiftFilters } from "../lib/types";
 
 const mockGifts: Gift[] = [
   {
-    id: '1',
-    title: 'Rose Gold Watch',
+    id: "2",
+    title: "Birthday Cake",
     photos: [],
-    dateReceived: '2024-12-25',
-    occasion: 'christmas',
-    tags: ['luxury', 'jewelry'],
-    notes: 'From grandma',
-    createdAt: '2024-12-25T00:00:00Z',
-    updatedAt: '2024-12-25T00:00:00Z',
-  },
-  {
-    id: '2',
-    title: 'Birthday Cake',
-    photos: [],
-    dateReceived: '2024-06-15',
-    occasion: 'birthday',
-    tags: ['food', 'sweet'],
-    createdAt: '2024-06-15T00:00:00Z',
-    updatedAt: '2024-06-15T00:00:00Z',
+    dateReceived: "2024-06-15",
+    occasion: "birthday",
+    tags: ["food", "sweet"],
+    createdAt: "2024-06-15T00:00:00Z",
+    updatedAt: "2024-06-15T00:00:00Z",
   },
 ];
 
 const baseFilters: GiftFilters = {
-  search: '',
-  occasion: 'all',
+  search: "",
+  occasion: "all",
   tags: [],
-  sortKey: 'date_desc',
+  sortKey: "date_desc",
 };
 
-describe('applyFilters', () => {
-  it('returns all gifts with no filters', () => {
+describe("applyFilters", () => {
+  it("returns all gifts with no filters", () => {
     expect(applyFilters(mockGifts, baseFilters)).toHaveLength(2);
   });
 
-  it('filters by search term', () => {
-    const result = applyFilters(mockGifts, { ...baseFilters, search: 'watch' });
+  it("filters by search term", () => {
+    const result = applyFilters(mockGifts, { ...baseFilters, search: "watch" });
     expect(result).toHaveLength(1);
-    expect(result[0].title).toBe('Rose Gold Watch');
+    expect(result[0].title).toBe("Rose Gold Watch");
   });
 
-  it('filters by occasion', () => {
-    const result = applyFilters(mockGifts, { ...baseFilters, occasion: 'birthday' });
+  it("filters by occasion", () => {
+    const result = applyFilters(mockGifts, {
+      ...baseFilters,
+      occasion: "birthday",
+    });
     expect(result).toHaveLength(1);
-    expect(result[0].occasion).toBe('birthday');
+    expect(result[0].occasion).toBe("birthday");
   });
 
-  it('sorts by date descending', () => {
-    const result = applyFilters(mockGifts, { ...baseFilters, sortKey: 'date_desc' });
-    expect(result[0].dateReceived).toBe('2024-12-25');
+  it("sorts by date descending", () => {
+    const result = applyFilters(mockGifts, {
+      ...baseFilters,
+      sortKey: "date_desc",
+    });
+    expect(result[0].dateReceived).toBe("2024-12-25");
   });
 
-  it('sorts by date ascending', () => {
-    const result = applyFilters(mockGifts, { ...baseFilters, sortKey: 'date_asc' });
-    expect(result[0].dateReceived).toBe('2024-06-15');
+  it("sorts by date ascending", () => {
+    const result = applyFilters(mockGifts, {
+      ...baseFilters,
+      sortKey: "date_asc",
+    });
+    expect(result[0].dateReceived).toBe("2024-06-15");
   });
 
-  it('sorts by name ascending', () => {
-    const result = applyFilters(mockGifts, { ...baseFilters, sortKey: 'name_asc' });
-    expect(result[0].title).toBe('Birthday Cake');
+  it("sorts by name ascending", () => {
+    const result = applyFilters(mockGifts, {
+      ...baseFilters,
+      sortKey: "name_asc",
+    });
+    expect(result[0].title).toBe("Birthday Cake");
   });
 });

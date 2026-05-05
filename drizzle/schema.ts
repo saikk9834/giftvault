@@ -47,13 +47,11 @@ export const gifts = mysqlTable("gifts", {
   occasion: mysqlEnum("occasion", [
     "birthday",
     "anniversary",
-    "christmas",
     "wedding",
     "graduation",
     "valentines",
     "mothers_day",
     "fathers_day",
-    "hanukkah",
     "other",
   ])
     .notNull()
@@ -100,7 +98,9 @@ export const friends = mysqlTable("friends", {
   requesterId: int("requesterId").notNull(),
   /** The user who received the friend request */
   addresseeId: int("addresseeId").notNull(),
-  status: mysqlEnum("status", ["pending", "accepted"]).notNull().default("pending"),
+  status: mysqlEnum("status", ["pending", "accepted"])
+    .notNull()
+    .default("pending"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -110,13 +110,13 @@ export type InsertFriend = typeof friends.$inferInsert;
 
 // ─── Push Tokens ─────────────────────────────────────────────────────────────
 
-export const pushTokens = mysqlTable('push_tokens', {
-  id: int('id').autoincrement().primaryKey(),
-  userId: int('userId').notNull(),
-  token: varchar('token', { length: 512 }).notNull(),
-  platform: varchar('platform', { length: 16 }).notNull().default('unknown'),
-  createdAt: timestamp('createdAt').defaultNow().notNull(),
-  updatedAt: timestamp('updatedAt').defaultNow().onUpdateNow().notNull(),
+export const pushTokens = mysqlTable("push_tokens", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  token: varchar("token", { length: 512 }).notNull(),
+  platform: varchar("platform", { length: 16 }).notNull().default("unknown"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 export type PushToken = typeof pushTokens.$inferSelect;

@@ -65,10 +65,18 @@ export function WelcomeCard({ visible, onDismiss }: Props) {
   if (!visible) return null;
 
   return (
-    <Modal transparent animationType="none" visible={visible} onRequestClose={handleDismiss}>
+    <Modal
+      transparent
+      animationType="none"
+      visible={visible}
+      onRequestClose={handleDismiss}
+    >
       <View style={styles.backdrop}>
         <Animated.View
-          style={[styles.cardWrapper, { opacity: opacityAnim, transform: [{ scale: scaleAnim }] }]}
+          style={[
+            styles.cardWrapper,
+            { opacity: opacityAnim, transform: [{ scale: scaleAnim }] },
+          ]}
         >
           <LinearGradient
             colors={["#1E1040", "#2D1B69", "#1A0F3C"]}
@@ -84,7 +92,10 @@ export function WelcomeCard({ visible, onDismiss }: Props) {
             <Pressable
               onPress={handleDismiss}
               hitSlop={12}
-              style={({ pressed }) => [styles.closeBtn, pressed && { opacity: 0.6 }]}
+              style={({ pressed }) => [
+                styles.closeBtn,
+                pressed && { opacity: 0.6 },
+              ]}
             >
               <Text style={styles.closeBtnText}>✕</Text>
             </Pressable>
@@ -106,19 +117,27 @@ export function WelcomeCard({ visible, onDismiss }: Props) {
               end={{ x: 1, y: 0 }}
               style={styles.titleGradient}
             >
-              <Text style={styles.title}>Welcome to GiftVault</Text>
+              <Text style={styles.title}>Surprise, Kutty Papa!! ❤️❤️❤️</Text>
             </LinearGradient>
 
             {/* Message */}
             <Text style={styles.message}>
-              Your personal gift tracker app where you can keep track of the
-              gifts you have received and send surprises to your loved ones.
+              This little vault is yours - a place to hold every gift, every
+              memory, every small piece of magic between us. But here&#39;s the
+              secret tucked inside it: there are 30 days left until your 30th
+              birthday, and I couldn&#39;t let a single one slip by without
+              celebrating you. Starting tomorrow, a new gift will find its way
+              to you every single day, all the way to the big day. Thirty days.
+              Thirty gifts. One extraordinary you. Let the countdown begin. ✨
             </Text>
 
             {/* CTA */}
             <Pressable
               onPress={handleDismiss}
-              style={({ pressed }) => [styles.ctaWrapper, pressed && { opacity: 0.85 }]}
+              style={({ pressed }) => [
+                styles.ctaWrapper,
+                pressed && { opacity: 0.85 },
+              ]}
             >
               <LinearGradient
                 colors={["#8B5CF6", "#EC4899"]}
@@ -126,7 +145,7 @@ export function WelcomeCard({ visible, onDismiss }: Props) {
                 end={{ x: 1, y: 0 }}
                 style={styles.cta}
               >
-                <Text style={styles.ctaText}>Let's go  🚀</Text>
+                <Text style={styles.ctaText}>Let's go 🚀</Text>
               </LinearGradient>
             </Pressable>
           </LinearGradient>

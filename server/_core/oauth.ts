@@ -1,7 +1,11 @@
 import bcrypt from "bcryptjs";
 import { COOKIE_NAME, ONE_YEAR_MS } from "../../shared/const.js";
 import type { Express, Request, Response } from "express";
-import { createLocalUser, getUserByOpenId, upsertUser } from "../db";
+import {
+  createLocalUser,
+  getUserByOpenId,
+  updateUserLastSignedIn,
+} from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
 
@@ -36,7 +40,9 @@ export function registerOAuthRoutes(app: Express) {
 
     const existing = await getUserByOpenId(email);
     if (existing) {
-      res.status(409).json({ error: "An account with this email already exists" });
+      res
+        .status(409)
+        .json({ error: "An account with this email already exists" });
       return;
     }
 
@@ -51,7 +57,10 @@ export function registerOAuthRoutes(app: Express) {
       });
 
       const cookieOptions = getSessionCookieOptions(req);
-      res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+      res.cookie(COOKIE_NAME, sessionToken, {
+        ...cookieOptions,
+        maxAge: ONE_YEAR_MS,
+      });
       res.json({ sessionToken, user: buildUserResponse(user!) });
     } catch (error) {
       console.error("[Auth] Signup failed:", error);
@@ -80,7 +89,7 @@ export function registerOAuthRoutes(app: Express) {
     }
 
     try {
-      await upsertUser({ openId: email, lastSignedIn: new Date() });
+      await updateUserLastSignedIn(user.id!);
 
       const sessionToken = await sdk.createSessionToken(email, {
         name: user.name || "",
@@ -88,7 +97,10 @@ export function registerOAuthRoutes(app: Express) {
       });
 
       const cookieOptions = getSessionCookieOptions(req);
-      res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+      res.cookie(COOKIE_NAME, sessionToken, {
+        ...cookieOptions,
+        maxAge: ONE_YEAR_MS,
+      });
       res.json({ sessionToken, user: buildUserResponse(user) });
     } catch (error) {
       console.error("[Auth] Signin failed:", error);

@@ -22,13 +22,11 @@ const CARD_HEIGHT = CARD_WIDTH;
 const PLACEHOLDER_GRADIENTS: Record<string, readonly [string, string]> = {
   birthday: ["#EC4899", "#F472B6"],
   anniversary: ["#8B5CF6", "#A78BFA"],
-  christmas: ["#EF4444", "#F97316"],
   wedding: ["#F59E0B", "#FCD34D"],
   graduation: ["#3B82F6", "#60A5FA"],
   valentines: ["#F43F5E", "#FB7185"],
   mothers_day: ["#EC4899", "#F9A8D4"],
   fathers_day: ["#6366F1", "#818CF8"],
-  hanukkah: ["#3B82F6", "#93C5FD"],
   other: ["#8B5CF6", "#EC4899"],
 };
 
@@ -67,46 +65,46 @@ export function GiftCard({ gift }: GiftCardProps) {
           end={{ x: 1, y: 1 }}
           style={[styles.card, { width: CARD_WIDTH, height: CARD_HEIGHT }]}
         >
-        {/* Photo overlays the gradient when present */}
-        {hasPhoto && (
-          <Image
-            source={{ uri: gift.photos[0] }}
-            style={[StyleSheet.absoluteFill, { borderRadius: 20 }]}
-            contentFit="cover"
-            transition={200}
-          />
-        )}
-
-        {/* Emoji placeholder when no photo */}
-        {!hasPhoto && (
-          <View style={styles.placeholderInner}>
-            <Text style={styles.placeholderEmoji}>🎁</Text>
-          </View>
-        )}
-
-        {/* Dark gradient overlay at bottom */}
-        <LinearGradient
-          colors={["transparent", "rgba(0,0,0,0.15)", "rgba(0,0,0,0.75)"]}
-          locations={[0, 0.45, 1]}
-          style={[StyleSheet.absoluteFill, { borderRadius: 20 }]}
-        />
-
-        {/* Occasion badge — top right */}
-        <View style={styles.badge}>
-          <OccasionBadge occasion={gift.occasion} size="sm" />
-        </View>
-
-        {/* Info — bottom */}
-        <View style={styles.info}>
-          <Text style={styles.title} numberOfLines={2}>
-            {gift.title}
-          </Text>
-          <Text style={styles.date}>{formattedDate}</Text>
-          {gift.tags.length > 0 && (
-            <Text style={styles.tags} numberOfLines={1}>
-              #{gift.tags.slice(0, 2).join(" #")}
-            </Text>
+          {/* Photo overlays the gradient when present */}
+          {hasPhoto && (
+            <Image
+              source={{ uri: gift.photos[0] }}
+              style={[StyleSheet.absoluteFill, { borderRadius: 20 }]}
+              contentFit="cover"
+              transition={200}
+            />
           )}
+
+          {/* Emoji placeholder when no photo */}
+          {!hasPhoto && (
+            <View style={styles.placeholderInner}>
+              <Text style={styles.placeholderEmoji}>🎁</Text>
+            </View>
+          )}
+
+          {/* Dark gradient overlay at bottom */}
+          <LinearGradient
+            colors={["transparent", "rgba(0,0,0,0.15)", "rgba(0,0,0,0.75)"]}
+            locations={[0, 0.45, 1]}
+            style={[StyleSheet.absoluteFill, { borderRadius: 20 }]}
+          />
+
+          {/* Occasion badge — top right */}
+          <View style={styles.badge}>
+            <OccasionBadge occasion={gift.occasion} size="sm" />
+          </View>
+
+          {/* Info — bottom */}
+          <View style={styles.info}>
+            <Text style={styles.title} numberOfLines={2}>
+              {gift.title}
+            </Text>
+            <Text style={styles.date}>{formattedDate}</Text>
+            {gift.tags.length > 0 && (
+              <Text style={styles.tags} numberOfLines={1}>
+                #{gift.tags.slice(0, 2).join(" #")}
+              </Text>
+            )}
           </View>
         </LinearGradient>
       </Pressable>

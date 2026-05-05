@@ -10,32 +10,36 @@ import { sendExpoPush } from "./push";
 // ─── Shared Zod Schemas ───────────────────────────────────────────────────────
 
 const occasionEnum = z.enum([
-  "birthday", "anniversary", "christmas", "wedding", "graduation",
-  "valentines", "mothers_day", "fathers_day", "hanukkah", "other",
+  "birthday",
+  "anniversary",
+  "wedding",
+  "graduation",
+  "valentines",
+  "mothers_day",
+  "fathers_day",
+  "other",
 ]);
 
 // ─── Gifts Router ─────────────────────────────────────────────────────────────
 
 const giftsRouter = router({
-  list: protectedProcedure.query(({ ctx }) =>
-    db.getUserGifts(ctx.user.id)
-  ),
+  list: protectedProcedure.query(({ ctx }) => db.getUserGifts(ctx.user.id)),
 
   getById: protectedProcedure
     .input(z.object({ id: z.number() }))
-    .query(({ ctx, input }) =>
-      db.getGiftById(input.id, ctx.user.id)
-    ),
+    .query(({ ctx, input }) => db.getGiftById(input.id, ctx.user.id)),
 
   create: protectedProcedure
-    .input(z.object({
-      title: z.string().min(1).max(255),
-      photos: z.array(z.string()).default([]),
-      dateReceived: z.string(),
-      occasion: occasionEnum.default("other"),
-      tags: z.array(z.string()).default([]),
-      notes: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        title: z.string().min(1).max(255),
+        photos: z.array(z.string()).default([]),
+        dateReceived: z.string(),
+        occasion: occasionEnum.default("other"),
+        tags: z.array(z.string()).default([]),
+        notes: z.string().optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const id = await db.createGift({
         userId: ctx.user.id,
@@ -50,15 +54,17 @@ const giftsRouter = router({
     }),
 
   update: protectedProcedure
-    .input(z.object({
-      id: z.number(),
-      title: z.string().min(1).max(255).optional(),
-      photos: z.array(z.string()).optional(),
-      dateReceived: z.string().optional(),
-      occasion: occasionEnum.optional(),
-      tags: z.array(z.string()).optional(),
-      notes: z.string().nullable().optional(),
-    }))
+    .input(
+      z.object({
+        id: z.number(),
+        title: z.string().min(1).max(255).optional(),
+        photos: z.array(z.string()).optional(),
+        dateReceived: z.string().optional(),
+        occasion: occasionEnum.optional(),
+        tags: z.array(z.string()).optional(),
+        notes: z.string().nullable().optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const { id, photos, tags, ...rest } = input;
       await db.updateGift(id, ctx.user.id, {
@@ -77,11 +83,13 @@ const giftsRouter = router({
     }),
 
   uploadPhoto: protectedProcedure
-    .input(z.object({
-      base64: z.string(),
-      mimeType: z.string().default("image/jpeg"),
-      fileName: z.string().default("photo.jpg"),
-    }))
+    .input(
+      z.object({
+        base64: z.string(),
+        mimeType: z.string().default("image/jpeg"),
+        fileName: z.string().default("photo.jpg"),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const buffer = Buffer.from(input.base64, "base64");
       const key = `gifts/${ctx.user.id}/${input.fileName}`;
@@ -94,7 +102,7 @@ const giftsRouter = router({
 
 const surprisesRouter = router({
   list: protectedProcedure.query(({ ctx }) =>
-    db.getSurprisesForUser(ctx.user.id)
+    db.getSurprisesForUser(ctx.user.id),
   ),
 
   getById: protectedProcedure
@@ -103,7 +111,11 @@ const surprisesRouter = router({
       const surprise = await db.getSurpriseById(input.id);
       if (!surprise) return null;
       // Only sender or recipient can view
-      if (surprise.senderId !== ctx.user.id && surprise.recipientId !== ctx.user.id) return null;
+      if (
+        surprise.senderId !== ctx.user.id &&
+        surprise.recipientId !== ctx.user.id
+      )
+        return null;
       // Hide the answer from the recipient until unlocked
       if (surprise.recipientId === ctx.user.id && !surprise.isUnlocked) {
         return { ...surprise, answer: "***" };
@@ -112,16 +124,18 @@ const surprisesRouter = router({
     }),
 
   send: protectedProcedure
-    .input(z.object({
-      recipientId: z.number(),
-      recipientName: z.string(),
-      giftContent: z.string().min(1),
-      giftImage: z.string().optional(),
-      puzzle: z.string().min(1),
-      puzzleImage: z.string().optional(),
-      answer: z.string().min(1),
-      deliveryDate: z.string(), // ISO date string
-    }))
+    .input(
+      z.object({
+        recipientId: z.number(),
+        recipientName: z.string(),
+        giftContent: z.string().min(1),
+        giftImage: z.string().optional(),
+        puzzle: z.string().min(1),
+        puzzleImage: z.string().optional(),
+        answer: z.string().min(1),
+        deliveryDate: z.string(), // ISO date string
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const sender = await db.getUserById(ctx.user.id);
       const id = await db.createSurprise({
@@ -159,14 +173,17 @@ const surprisesRouter = router({
     }),
 
   unlock: protectedProcedure
-    .input(z.object({
-      id: z.number(),
-      answer: z.string(),
-    }))
+    .input(
+      z.object({
+        id: z.number(),
+        answer: z.string(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const surprise = await db.getSurpriseById(input.id);
       if (!surprise) throw new Error("Surprise not found");
-      if (surprise.recipientId !== ctx.user.id) throw new Error("Not authorized");
+      if (surprise.recipientId !== ctx.user.id)
+        throw new Error("Not authorized");
       if (surprise.isUnlocked) return { success: true, alreadyUnlocked: true };
 
       const correct = surprise.answer === input.answer.toLowerCase().trim();
@@ -177,25 +194,32 @@ const surprisesRouter = router({
     }),
 
   update: protectedProcedure
-    .input(z.object({
-      id: z.number(),
-      giftContent: z.string().min(1).optional(),
-      puzzle: z.string().min(1).optional(),
-      puzzleImage: z.string().nullable().optional(),
-      answer: z.string().min(1).optional(),
-      deliveryDate: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        id: z.number(),
+        giftContent: z.string().min(1).optional(),
+        puzzle: z.string().min(1).optional(),
+        puzzleImage: z.string().nullable().optional(),
+        answer: z.string().min(1).optional(),
+        deliveryDate: z.string().optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const surprise = await db.getSurpriseById(input.id);
-      if (!surprise) throw new Error('Surprise not found');
-      if (surprise.senderId !== ctx.user.id) throw new Error('Not authorized');
-      if (surprise.isUnlocked) throw new Error('Cannot edit an already-unlocked surprise');
+      if (!surprise) throw new Error("Surprise not found");
+      if (surprise.senderId !== ctx.user.id) throw new Error("Not authorized");
+      if (surprise.isUnlocked)
+        throw new Error("Cannot edit an already-unlocked surprise");
       const updateData: Record<string, unknown> = {};
-      if (input.giftContent !== undefined) updateData.giftContent = input.giftContent;
+      if (input.giftContent !== undefined)
+        updateData.giftContent = input.giftContent;
       if (input.puzzle !== undefined) updateData.puzzle = input.puzzle;
-      if (input.puzzleImage !== undefined) updateData.puzzleImage = input.puzzleImage;
-      if (input.answer !== undefined) updateData.answer = input.answer.toLowerCase().trim();
-      if (input.deliveryDate !== undefined) updateData.deliveryDate = new Date(input.deliveryDate);
+      if (input.puzzleImage !== undefined)
+        updateData.puzzleImage = input.puzzleImage;
+      if (input.answer !== undefined)
+        updateData.answer = input.answer.toLowerCase().trim();
+      if (input.deliveryDate !== undefined)
+        updateData.deliveryDate = new Date(input.deliveryDate);
       await db.updateSurprise(input.id, ctx.user.id, updateData);
       return { success: true };
     }),
@@ -212,14 +236,12 @@ const surprisesRouter = router({
 
 const friendsRouter = router({
   list: protectedProcedure.query(({ ctx }) =>
-    db.getFriendsForUser(ctx.user.id)
+    db.getFriendsForUser(ctx.user.id),
   ),
 
   search: protectedProcedure
     .input(z.object({ query: z.string().min(1) }))
-    .query(({ ctx, input }) =>
-      db.searchUserByName(input.query, ctx.user.id)
-    ),
+    .query(({ ctx, input }) => db.searchUserByName(input.query, ctx.user.id)),
 
   sendRequest: protectedProcedure
     .input(z.object({ addresseeId: z.number() }))
@@ -248,10 +270,12 @@ const friendsRouter = router({
 const notificationsRouter = router({
   /** Register or refresh the device's Expo push token for the current user. */
   registerToken: protectedProcedure
-    .input(z.object({
-      token: z.string().min(1),
-      platform: z.enum(["ios", "android", "web"]).default("android"),
-    }))
+    .input(
+      z.object({
+        token: z.string().min(1),
+        platform: z.enum(["ios", "android", "web"]).default("android"),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       await db.upsertPushToken(ctx.user.id, input.token, input.platform);
       return { success: true };
