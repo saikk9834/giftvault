@@ -47,11 +47,13 @@ export const gifts = mysqlTable("gifts", {
   occasion: mysqlEnum("occasion", [
     "birthday",
     "anniversary",
+    "christmas",
     "wedding",
     "graduation",
     "valentines",
     "mothers_day",
     "fathers_day",
+    "hanukkah",
     "other",
   ])
     .notNull()
@@ -84,6 +86,7 @@ export const surprises = mysqlTable("surprises", {
   deliveryDate: timestamp("deliveryDate").notNull(),
   isUnlocked: boolean("isUnlocked").notNull().default(false),
   unlockedAt: timestamp("unlockedAt"),
+  notifiedAt: timestamp("notifiedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

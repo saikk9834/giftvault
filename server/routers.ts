@@ -12,11 +12,13 @@ import { sendExpoPush } from "./push";
 const occasionEnum = z.enum([
   "birthday",
   "anniversary",
+  "christmas",
   "wedding",
   "graduation",
   "valentines",
   "mothers_day",
   "fathers_day",
+  "hanukkah",
   "other",
 ]);
 
@@ -152,10 +154,11 @@ const surprisesRouter = router({
         deliveryDate: new Date(input.deliveryDate),
         isUnlocked: false,
       });
-      // Send push notification to recipient if gift is available now
+      // Send push notification to recipient if the gift is already available
       const deliveryDate = new Date(input.deliveryDate);
       const isAvailableNow = deliveryDate <= new Date();
       if (isAvailableNow) {
+        await db.markSurpriseNotified(id);
         const tokens = await db.getPushTokensForUser(input.recipientId);
         if (tokens.length > 0) {
           await sendExpoPush({

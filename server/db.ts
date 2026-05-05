@@ -140,7 +140,7 @@ export async function getUserByOpenId(openId: string) {
 
 import { gifts, friends, surprises, pushTokens } from "../drizzle/schema";
 import type { InsertGift, InsertSurprise } from "../drizzle/schema";
-import { and, desc, or } from "drizzle-orm";
+import { and, desc, isNull, lte, or } from "drizzle-orm";
 
 export async function getUserGifts(userId: number) {
   const db = await getDb();
@@ -254,6 +254,29 @@ export async function deleteSurprise(id: number, userId: number) {
         or(eq(surprises.senderId, userId), eq(surprises.recipientId, userId)),
       ),
     );
+}
+
+export async function getPendingSurpriseNotifications() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(surprises)
+    .where(
+      and(
+        lte(surprises.deliveryDate, new Date()),
+        isNull(surprises.notifiedAt),
+      ),
+    );
+}
+
+export async function markSurpriseNotified(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(surprises)
+    .set({ notifiedAt: new Date() })
+    .where(and(eq(surprises.id, id), isNull(surprises.notifiedAt)));
 }
 
 // ─── Friends ─────────────────────────────────────────────────────────────────

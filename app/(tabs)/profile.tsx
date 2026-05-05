@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -7,18 +7,20 @@ import {
   Pressable,
   TextInput,
   Alert,
+  Linking,
   Platform,
   Switch,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+import * as Notifications from "expo-notifications";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Avatar } from "@/components/ui/avatar";
 import { useColors } from "@/hooks/use-colors";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useAuth } from "@/hooks/use-auth";
 import { trpc } from "@/lib/trpc";
 
@@ -84,6 +86,30 @@ export default function ProfileScreen() {
   const { user, isAuthenticated, logout } = useAuth();
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState(user?.name ?? "");
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+
+  const checkNotificationPermission = useCallback(async () => {
+    if (Platform.OS === "web") return;
+    const { status } = await Notifications.getPermissionsAsync();
+    setNotificationsEnabled(status === "granted");
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      checkNotificationPermission();
+    }, [checkNotificationPermission])
+  );
+
+  const handleNotificationToggle = async (value: boolean) => {
+    if (Platform.OS === "web") return;
+    if (value) {
+      const { status } = await Notifications.requestPermissionsAsync();
+      setNotificationsEnabled(status === "granted");
+      if (status !== "granted") Linking.openSettings();
+    } else {
+      Linking.openSettings();
+    }
+  };
 
   const { data: gifts = [] } = trpc.gifts.list.useQuery(undefined, {
     enabled: isAuthenticated,
@@ -258,8 +284,8 @@ export default function ProfileScreen() {
             iconColor="#8B5CF6"
             rightElement={
               <Switch
-                value={true}
-                onValueChange={() => {}}
+                value={notificationsEnabled}
+                onValueChange={handleNotificationToggle}
                 trackColor={{ true: "#8B5CF6", false: colors.border }}
                 thumbColor="#fff"
               />
