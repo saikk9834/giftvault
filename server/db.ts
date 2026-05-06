@@ -24,6 +24,8 @@ export async function getDb() {
         ssl: isRemote ? { rejectUnauthorized: true } : undefined,
         waitForConnections: true,
         connectionLimit: 10,
+        enableKeepAlive: true,
+        keepAliveInitialDelay: 10000,
       });
       _db = drizzle(pool);
     } catch (error) {

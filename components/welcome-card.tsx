@@ -117,7 +117,7 @@ export function WelcomeCard({ visible, onDismiss }: Props) {
               end={{ x: 1, y: 0 }}
               style={styles.titleGradient}
             >
-              <Text style={styles.title}>Surprise, Kutty Papa!! ❤️❤️❤️</Text>
+              <Text style={styles.title}>Surprise, Kutty Papa!!❤️</Text>
             </LinearGradient>
 
             {/* Message */}
@@ -269,6 +269,8 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: 20,
+    borderRadius: 15,
   },
   ctaText: {
     color: "#fff",
