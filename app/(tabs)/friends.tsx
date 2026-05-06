@@ -8,6 +8,7 @@ import {
   TextInput,
   Alert,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
@@ -205,8 +206,9 @@ export default function FriendsScreen() {
   }
 
   return (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
     <ScreenContainer>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         {/* Hero */}
         <LinearGradient
           colors={['#0C4A6E', '#0369A1', '#0EA5E9']}
@@ -359,6 +361,7 @@ export default function FriendsScreen() {
         </View>
       </ScrollView>
     </ScreenContainer>
+    </KeyboardAvoidingView>
   );
 }
 

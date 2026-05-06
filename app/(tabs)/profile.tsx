@@ -10,6 +10,7 @@ import {
   Linking,
   Platform,
   Switch,
+  KeyboardAvoidingView,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
@@ -198,10 +199,12 @@ export default function ProfileScreen() {
   }
 
   return (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
     <ScreenContainer>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
       >
         {/* Profile hero */}
         <LinearGradient
@@ -371,6 +374,7 @@ export default function ProfileScreen() {
         </View>
       </ScrollView>
     </ScreenContainer>
+    </KeyboardAvoidingView>
   );
 }
 

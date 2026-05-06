@@ -212,7 +212,7 @@ export default function SurpriseDetailScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="padding"
       >
         <ScrollView
           contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
@@ -380,13 +380,28 @@ export default function SurpriseDetailScreen() {
                   : `Unlocked on ${surprise.unlockedAt ? format(new Date(surprise.unlockedAt), 'MMM d, yyyy') : 'recently'}`}
               </Text>
               {surprise.giftImage && (
-                <Pressable onPress={() => setLightboxUri(surprise.giftImage!)} style={styles.giftImageWrapper}>
-                  <Image
-                    source={{ uri: surprise.giftImage }}
-                    style={styles.giftImage}
-                    contentFit="cover"
-                  />
-                </Pressable>
+                <>
+                  <Text style={[styles.imageLabel, { color: colors.muted }]}>Gift</Text>
+                  <Pressable onPress={() => setLightboxUri(surprise.giftImage!)} style={styles.giftImageWrapper}>
+                    <Image
+                      source={{ uri: surprise.giftImage }}
+                      style={styles.giftImage}
+                      contentFit="cover"
+                    />
+                  </Pressable>
+                </>
+              )}
+              {surprise.puzzleImage && (
+                <>
+                  <Text style={[styles.imageLabel, { color: colors.muted }]}>The Riddle</Text>
+                  <Pressable onPress={() => setLightboxUri(surprise.puzzleImage!)} style={styles.giftImageWrapper}>
+                    <Image
+                      source={{ uri: surprise.puzzleImage }}
+                      style={styles.giftImage}
+                      contentFit="cover"
+                    />
+                  </Pressable>
+                </>
               )}
             </View>
           )}
@@ -605,11 +620,19 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
   },
+  imageLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    alignSelf: 'flex-start',
+    marginTop: 8,
+  },
   giftImageWrapper: {
     width: '100%',
     borderRadius: 12,
     overflow: 'hidden',
-    marginTop: 8,
+    marginTop: 4,
   },
   giftImage: {
     width: '100%',
