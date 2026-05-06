@@ -32,12 +32,13 @@ if (Platform.OS !== 'web') {
 }
 
 async function registerForPushNotificationsAsync(): Promise<string | null> {
+  console.log('[Push] Starting registration. isDevice:', Device.isDevice, 'platform:', Platform.OS);
+
   if (!Device.isDevice) {
-    // Push notifications require a physical device
+    console.warn('[Push] Not a physical device — skipping token registration');
     return null;
   }
 
-  // Android requires a channel before requesting permissions
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('surprises', {
       name: 'Surprise Gifts',
@@ -53,15 +54,17 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
   }
 
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
-  let finalStatus = existingStatus;
+  console.log('[Push] Existing permission status:', existingStatus);
 
+  let finalStatus = existingStatus;
   if (existingStatus !== 'granted') {
     const { status } = await Notifications.requestPermissionsAsync();
     finalStatus = status;
+    console.log('[Push] Requested permission, result:', status);
   }
 
   if (finalStatus !== 'granted') {
-    console.log('[Push] Permission not granted');
+    console.warn('[Push] Permission denied — notifications will not work. Go to Android Settings → Apps → GiftVault → Notifications and enable them.');
     return null;
   }
 
@@ -70,12 +73,15 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
       Constants?.expoConfig?.extra?.eas?.projectId ??
       Constants?.easConfig?.projectId;
 
+    console.log('[Push] EAS projectId:', projectId ?? 'NOT FOUND');
+
     if (!projectId) {
-      console.warn('[Push] No EAS projectId found — push token unavailable in dev builds without EAS');
+      console.warn('[Push] No EAS projectId — rebuild the app via EAS to fix this');
       return null;
     }
 
     const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
+    console.log('[Push] Token obtained:', tokenData.data);
     return tokenData.data;
   } catch (err) {
     console.warn('[Push] Failed to get push token:', err);
@@ -93,11 +99,18 @@ export function usePushNotifications(isAuthenticated: boolean) {
     let mounted = true;
 
     registerForPushNotificationsAsync().then((token) => {
-      if (!mounted || !token) return;
+      if (!mounted) return;
+      if (!token) {
+        console.warn('[Push] No token returned — registration aborted');
+        return;
+      }
       tokenRef.current = token;
-
       const platform = Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web';
-      registerToken.mutate({ token, platform });
+      console.log('[Push] Registering token with server, platform:', platform);
+      registerToken.mutate({ token, platform }, {
+        onSuccess: () => console.log('[Push] Token saved to server successfully'),
+        onError: (err) => console.error('[Push] Failed to save token to server:', err),
+      });
     });
 
     // Handle notification taps — deep link to the surprise screen
