@@ -78,7 +78,7 @@ export const surprises = mysqlTable("surprises", {
   recipientId: int("recipientId").notNull(),
   recipientName: varchar("recipientName", { length: 255 }).notNull(),
   giftContent: text("giftContent").notNull(),
-  giftImage: text("giftImage"),
+  giftImage: mediumtext("giftImage"),
   puzzle: text("puzzle").notNull(),
   puzzleImage: mediumtext("puzzleImage"),
   /** Stored lowercase for case-insensitive comparison */
