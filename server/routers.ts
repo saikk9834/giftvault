@@ -12,13 +12,11 @@ import { sendExpoPush } from "./push";
 const occasionEnum = z.enum([
   "birthday",
   "anniversary",
-  "christmas",
   "wedding",
   "graduation",
   "valentines",
   "mothers_day",
   "fathers_day",
-  "hanukkah",
   "other",
 ]);
 

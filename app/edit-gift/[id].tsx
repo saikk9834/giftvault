@@ -18,7 +18,7 @@ import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { format } from "date-fns";
+import { format, parse } from "date-fns";
 import DateTimePicker from "@react-native-community/datetimepicker";
 
 import { useColors } from "@/hooks/use-colors";
@@ -72,7 +72,7 @@ export default function EditGiftScreen() {
       setTags(parsedTags);
       setNotes(rawGift.notes ?? "");
       setOccasion((rawGift.occasion as Occasion) ?? "other");
-      const d = new Date(rawGift.dateReceived);
+      const d = parse(rawGift.dateReceived, 'yyyy-MM-dd', new Date());
       setDateReceived(isNaN(d.getTime()) ? new Date() : d);
       setLoaded(true);
     }

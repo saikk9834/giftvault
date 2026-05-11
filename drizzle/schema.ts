@@ -47,13 +47,11 @@ export const gifts = mysqlTable("gifts", {
   occasion: mysqlEnum("occasion", [
     "birthday",
     "anniversary",
-    "christmas",
     "wedding",
     "graduation",
     "valentines",
     "mothers_day",
     "fathers_day",
-    "hanukkah",
     "other",
   ])
     .notNull()

@@ -130,7 +130,7 @@ export default function VaultScreen() {
 
   const totalGifts = allGifts.length;
   const thisYearGifts = allGifts.filter(
-    (g) => new Date(g.dateReceived).getFullYear() === new Date().getFullYear(),
+    (g) => parseInt(g.dateReceived.slice(0, 4), 10) === new Date().getFullYear(),
   ).length;
   const occasionCount = new Set(allGifts.map((g) => g.occasion)).size;
   const firstName = user?.name?.split(" ")[0] ?? "there";

@@ -17,7 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { format } from 'date-fns';
+import { format, parse } from 'date-fns';
 
 import { useColors } from '@/hooks/use-colors';
 import { trpc } from '@/lib/trpc';
@@ -96,7 +96,7 @@ export default function GiftDetailScreen() {
   const hasPhotos = gift.photos.length > 0;
   const formattedDate = (() => {
     try {
-      return format(new Date(gift.dateReceived), 'MMMM d, yyyy');
+      return format(parse(gift.dateReceived, 'yyyy-MM-dd', new Date()), 'MMMM d, yyyy');
     } catch {
       return gift.dateReceived;
     }
