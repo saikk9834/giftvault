@@ -11,7 +11,7 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { format } from "date-fns";
+import { format, parse } from "date-fns";
 
 import { Gift } from "@/lib/types";
 import { OccasionBadge } from "@/components/ui/occasion-badge";
@@ -47,7 +47,10 @@ export function GiftCard({ gift }: GiftCardProps) {
 
   const formattedDate = (() => {
     try {
-      return format(new Date(gift.dateReceived), "MMM d, yyyy");
+      return format(
+        parse(gift.dateReceived, "yyyy-MM-dd", new Date()),
+        "MMMM d, yyyy",
+      );
     } catch {
       return gift.dateReceived;
     }
